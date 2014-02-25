@@ -15,8 +15,8 @@ module.exports = sane;
  * @public
  */
 
-function sane(files, globs) {
-  return new Watcher(files, globs);
+function sane(files, glob) {
+  return new Watcher(files, {glob: glob});
 }
 
 /**

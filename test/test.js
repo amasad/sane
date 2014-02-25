@@ -69,11 +69,9 @@ describe('sane(file)', function() {
   });
 });
 
-describe('sane(file, {glob})', function() {
+describe('sane(file, glob)', function() {
   beforeEach(function () {
-    this.watcher = sane(testdir, {
-      glob: ['**/file_1', '**/file_2']
-    });
+    this.watcher = sane(testdir, ['**/file_1', '**/file_2']);
   });
 
   afterEach(function() {
