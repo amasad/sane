@@ -93,14 +93,12 @@ Watcher.prototype.onChange = function(file) {
       for (var i = 0; i < globs.length; i++) {
         if (minimatch(file, globs[i])) {
           this.emit('change', file);
-          return true;
         }
       }
-      return false;
     } else {
       this.emit('change', file);
-      return true;
     }
+    this.changeTimers[file] = null;
   }.bind(this), 100);
 };
 
