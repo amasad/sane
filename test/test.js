@@ -61,6 +61,16 @@ describe('sane(file)', function() {
     });
   });
 
+  it('adding a new file will trigger a change', function() {
+    var testfile = testdir + '/file_xxx';
+    this.watcher.on('change', function(filepath) {
+      assert.equal(filepath, testfile);
+      done();
+    });
+    this.watcher.on('ready', function() {
+      fs.writeFileSync(testfile, 'wow');
+    });
+  });
 });
 
 describe('sane(file, globs)', function() {
