@@ -31,6 +31,7 @@ sane.Watcher = Watcher;
  * @class Watcher
  * @param {Array<string>} files
  * @param {object} opts
+ * @public
  */
 
 function Watcher(dir, opts) {
@@ -52,6 +53,7 @@ Watcher.prototype.__proto__ = EventEmitter.prototype;
  * Watch a directory.
  *
  * @param {string} dir
+ * @private
  */
 
 Watcher.prototype.watchdir = function(dir) {
@@ -80,7 +82,7 @@ Watcher.prototype.close = function() {
  * Triggers a 'change' event after debounding it to take care of duplicate
  * events on os x.
  *
- * @public
+ * @private
  */
 
 Watcher.prototype.onChange = function(file) {
