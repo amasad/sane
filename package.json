@@ -1,0 +1,27 @@
+{
+  "name": "sane",
+  "version": "0.0.1",
+  "description": "A simple file watch utility that doesn't drive you to insanity",
+  "main": "index.js",
+  "scripts": {
+    "test": "node_modules/mocha/bin/mocha --bail"
+  },
+  "keywords": [
+    "watch",
+    "file",
+    "fswatcher",
+    "watchfile",
+    "fs",
+    "watching"
+  ],
+  "author": "amasad",
+  "license": "MIT",
+  "dependencies": {
+    "fsevents": "0.1.6",
+    "walker": "~1.0.5",
+    "minimatch": "~0.2.14"
+  },
+  "devDependencies": {
+    "mocha": "~1.17.1"
+  }
+}
