@@ -1,7 +1,7 @@
 {
   "name": "sane",
   "version": "0.0.1",
-  "description": "A simple file watch utility that doesn't drive you to insanity",
+  "description": "Sane aims to be fast, small, and reliable file system watcher. No bells and whistles, just change events.",
   "main": "index.js",
   "scripts": {
     "test": "node_modules/mocha/bin/mocha --bail"
