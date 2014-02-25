@@ -17,11 +17,11 @@
   "author": "amasad",
   "license": "MIT",
   "dependencies": {
-    "fsevents": "0.1.6",
     "walker": "~1.0.5",
     "minimatch": "~0.2.14"
   },
   "devDependencies": {
-    "mocha": "~1.17.1"
+    "mocha": "~1.17.1",
+    "rimraf": "~2.2.6"
   }
 }

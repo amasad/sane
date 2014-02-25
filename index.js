@@ -1,20 +1,8 @@
 var fs = require('fs');
-var os = require('os');
 var path = require('path');
 var walker = require('walker');
 var minimatch = require('minimatch');
 var EventEmitter = require('events').EventEmitter;
-
-var isMac = os.platform() === 'darwin';
-
-/**
- * Conditional dep.
- */
-
-var fsevents;
-if (isMac) {
-  fsevents = require('fsevents');
-}
 
 module.exports = sane;
 
@@ -42,67 +30,36 @@ sane.Watcher = Watcher;
  *
  * @class Watcher
  * @param {Array<string>} files
- * @param {Array<string>} globs
+ * @param {object} opts
  */
 
-function Watcher(files, globs) {
-  this.globs = globs || [];
-  if (!Array.isArray(files)) files = [files];
-  this.onChange = this.onChange.bind(this);
-  this.processItem = this.processItem.bind(this);
+function Watcher(dir, opts) {
+  opts = opts || {};
+  this.persistent = opts.persistent || false;
+  this.globs = opts.glob || [];
+  if (!Array.isArray(this.globs)) this.globs = [this.glob];
   this.watchers = [];
-  this.fileCount = 0;
-  for (var i = 0; i < files.length; i++) {
-    this.processItem(files[i]);
-  }
+  this.changeTimers = {};
+  this.dir = dir
+  this.watchdir = this.watchdir.bind(this);
+  this.watchdir(dir);
+  recReaddir(dir, this.watchdir, this.emit.bind(this, 'ready'));
 }
 
 Watcher.prototype.__proto__ = EventEmitter.prototype;
 
 /**
- * Process a file or directory.
+ * Watch a directory.
  *
- * @param {string} file
- * @private
+ * @param {string} dir
  */
 
-Watcher.prototype.processItem = function(file) {
-  this.fileCount++;
-  fs.stat(file, function (err, stat) {
-    if (isMac) {
-      this.watchFile(file);
-    } else if (stat.isDirectory()) {
-      this.fileCount -= 1;
-      recReaddir(file, this.processItem);
-    } else {
-      this.watchFile(file);
-    }
+Watcher.prototype.watchdir = function(dir) {
+  var relativePath = path.relative(this.dir, dir);
+  var watcher = fs.watch(dir, function(event, filename) {
+    this.onChange(path.join(relativePath, filename));
   }.bind(this));
-};
-
-/**
- * Watch a file or directory.
- *
- * @param {string} file
- * @private
- */
-
-Watcher.prototype.watchFile = function(file) {
-  var watcher;
-  if (isMac) {
-    watcher = createFSEventsWatcher(file, this.onChange);
-  } else {
-    watcher = fs.watch(file, function(event, filename) {
-      if (event === 'change') {
-        this.onChange(filename);
-      }
-    });
-  }
   this.watchers.push(watcher);
-  this.fileCount -= 1;
-  if (this.fileCount === 0) {
-    this.emit('ready');
-  }
 };
 
 /**
@@ -114,65 +71,48 @@ Watcher.prototype.watchFile = function(file) {
 Watcher.prototype.close = function() {
   var watchers = this.watchers;
   for (var i = 0; i < watchers.length; i++) {
-    if (watchers[i].stop) {
-      watchers[i].stop();
-    } else {
-      watchers[i].close();
-    }
+    watchers[i].close();
   }
   this.removeAllListeners();
 };
 
 /**
- * End watching.
+ * Triggers a 'change' event after debounding it to take care of duplicate
+ * events on os x.
  *
  * @public
  */
 
 Watcher.prototype.onChange = function(file) {
-  var globs = this.globs;
-  if (globs.length) {
-    for (var i = 0; i < globs.length; i++) {
-      if (minimatch(file, globs[i])) {
-        this.emit('change', file);
-        return true;
+  clearTimeout(this.changeTimers[file]);
+  this.changeTimers[file] = setTimeout(function() {
+    var globs = this.globs;
+    if (globs.length) {
+      for (var i = 0; i < globs.length; i++) {
+        if (minimatch(file, globs[i])) {
+          this.emit('change', file);
+          return true;
+        }
       }
+      return false;
+    } else {
+      this.emit('change', file);
+      return true;
     }
-    return false;
-  } else {
-    this.emit('change', file);
-    return true;
-  }
+  }.bind(this), 100);
 };
 
 /**
- * Create an FSEvents based watcher.
- *
- * @param {string} filepath
- * @param {function} callback
- * @return {FSEvents}
- * @private
- */
-
-function createFSEventsWatcher(filepath, callback) {
-  var watcher = fsevents(filepath);
-  watcher.on('fsevent', function(filepath, flags) {
-    var info = fsevents.getInfo(filepath, flags);
-    if (info.event === 'modified') {
-      callback(filepath);
-    }
-  });
-  return watcher;
-}
-
-/**
- * Traverse a directory recursively calling `cb` on every file.
+ * Traverse a directory recursively calling `callback` on every directory.
  *
  * @param {string} dir
- * @param {function} cb
+ * @param {function} callback
+ * @param {function} endCallback
  * @private
  */
 
-function recReaddir(dir, cb) {
-  walker(dir).on('file', cb);
+function recReaddir(dir, callback, endCallback) {
+  walker(dir)
+    .on('dir', callback)
+    .on('end', endCallback);
 }
