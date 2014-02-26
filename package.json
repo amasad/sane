@@ -23,5 +23,8 @@
   "devDependencies": {
     "mocha": "~1.17.1",
     "rimraf": "~2.2.6"
+  },
+  "engines": {
+    "node": ">=0.10.0"
   }
 }

@@ -2,7 +2,7 @@ sane
 ----
 
 I've been driven to insanity by node filesystem watcher wrappers.
-Sane aims to be fast, small, and reliable file system watcher. No bells and whistles, just change events.
+Sane aims to be fast, small, and reliable file system watcher.
 
 ## API
 
