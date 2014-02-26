@@ -63,7 +63,7 @@ describe('sane(file)', function() {
 
   it('adding a file will trigger a change', function(done) {
     var testfile = jo(testdir, 'file_x' + Math.floor(Math.random() * 10000));
-    this.watcher.on('change', function(filepath) {
+    this.watcher.on('add', function(filepath) {
       assert.equal(filepath, path.relative(testdir, testfile));
       done();
     });
@@ -72,12 +72,50 @@ describe('sane(file)', function() {
     });
   });
 
-  it('adding in a new subdir will trigger a change', function(done) {
-    var subdir = jo(testdir, 'sub_x' + Math.floor(Math.random() * 10000));
-    var testfile = jo(subdir, 'file_x' + Math.floor(Math.random() * 10000));
-    this.watcher.on('change', function(filepath) {
+  it('removing a file will emit delete event', function(done) {
+    var testfile = jo(testdir, 'file_9');
+    this.watcher.on('delete', function(filepath) {
       assert.equal(filepath, path.relative(testdir, testfile));
       done();
+    });
+    this.watcher.on('ready', function() {
+      fs.unlink(testfile, 'wow');
+    });
+  });
+
+  it('removing a dir will emit delete event', function(done) {
+    var subdir = jo(testdir, 'sub_9');
+    this.watcher.on('delete', function(filepath) {
+      assert.equal(filepath, path.relative(testdir, subdir));
+      done();
+    });
+    this.watcher.on('ready', function() {
+      rimraf.sync(subdir);
+    });
+  });
+
+  it('adding a dir will emit an add event', function(done) {
+    var subdir = jo(testdir, 'sub_x' + Math.floor(Math.random() * 10000));
+    this.watcher.on('add', function(filepath) {
+      assert.equal(filepath, path.relative(testdir, subdir));
+      done();
+    });
+    this.watcher.on('ready', function() {
+      fs.mkdirSync(subdir);
+    });
+  });
+
+  it('adding in a new subdir will trigger an add event', function(done) {
+    var subdir = jo(testdir, 'sub_x' + Math.floor(Math.random() * 10000));
+    var testfile = jo(subdir, 'file_x' + Math.floor(Math.random() * 10000));
+    var i = 0;
+    this.watcher.on('add', function(filepath) {
+      if (++i === 1) {
+        assert.equal(filepath, path.relative(testdir, subdir));
+      } else {
+        assert.equal(filepath, path.relative(testdir, testfile));
+        done();
+      }
     });
     this.watcher.on('ready', function() {
       fs.mkdirSync(subdir);
@@ -90,9 +128,14 @@ describe('sane(file)', function() {
   it('closes watchers when dirs are deleted', function(done) {
     var subdir = jo(testdir, 'sub_1');
     var testfile = jo(subdir, 'file_1');
-    this.watcher.on('change', function(filepath) {
-      assert.equal(filepath, path.relative(testdir, testfile));
-      done();
+    var i = 0;
+    this.watcher.on('add', function(filepath) {
+      if (++i === 1) {
+        assert.equal(filepath, path.relative(testdir, subdir));
+      } else {
+        assert.equal(filepath, path.relative(testdir, testfile));
+        done();
+      }
     });
     this.watcher.on('ready', function() {
       rimraf.sync(subdir);
@@ -101,6 +144,24 @@ describe('sane(file)', function() {
         defer(function() {
           fs.writeFileSync(testfile, 'wow');
         });
+      });
+    });
+  });
+
+  it('should be ok to remove and then add the same file', function(done) {
+    var testfile = jo(testdir, 'sub_8', 'file_1');
+    var i = 0;
+    this.watcher.on('add', function(filepath) {
+      assert.equal(filepath, path.relative(testdir, testfile));
+    });
+    this.watcher.on('delete', function(filepath) {
+      assert.equal(filepath, path.relative(testdir, testfile));
+      done();
+    });
+    this.watcher.on('ready', function() {
+      fs.unlink(testfile);
+      defer(function() {
+        fs.writeFileSync(testfile, 'wow');
       });
     });
   });
