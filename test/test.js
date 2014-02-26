@@ -81,9 +81,9 @@ describe('sane(file)', function() {
     });
     this.watcher.on('ready', function() {
       fs.mkdirSync(subdir);
-      setTimeout(function() {
+      defer(function() {
         fs.writeFileSync(testfile, 'wow');
-      }, 300);
+      });
     });
   });
 
@@ -96,10 +96,12 @@ describe('sane(file)', function() {
     });
     this.watcher.on('ready', function() {
       rimraf.sync(subdir);
-      fs.mkdirSync(subdir);
-      setTimeout(function() {
-        fs.writeFileSync(testfile, 'wow');
-      }, 300);
+      defer(function() {
+        fs.mkdirSync(subdir);
+        defer(function() {
+          fs.writeFileSync(testfile, 'wow');
+        });
+      });
     });
   });
 });
@@ -127,3 +129,7 @@ describe('sane(file, glob)', function() {
     });
   });
 });
+
+function defer(fn) {
+  setTimeout(fn, 300);
+}
