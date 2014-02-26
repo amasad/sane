@@ -79,7 +79,23 @@ describe('sane(file)', function() {
       fs.mkdirSync(subdir);
       setTimeout(function() {
         fs.writeFileSync(testfile, 'wow');
-      }, 300)
+      }, 300);
+    });
+  });
+
+  it('closes watchers when dirs are deleted', function(done) {
+    var subdir = testdir + '/sub_1';
+    var testfile = subdir + '/file_1';
+    this.watcher.on('change', function(filepath) {
+      assert.equal(filepath, path.relative(testdir, testfile));
+      done();
+    });
+    this.watcher.on('ready', function() {
+      rimraf.sync(subdir);
+      fs.mkdirSync(subdir);
+      setTimeout(function() {
+        fs.writeFileSync(testfile, 'wow');
+      }, 300);
     });
   });
 });

@@ -40,10 +40,11 @@ function Watcher(dir, opts) {
   this.globs = opts.glob || [];
   if (!Array.isArray(this.globs)) this.globs = [this.glob];
   this.watchers = [];
-  this.watched = {};
-  this.changeTimers = {};
+  this.watched = Object.create(null);
+  this.changeTimers = Object.create(null);
   this.dir = dir
   this.watchdir = this.watchdir.bind(this);
+  this.stopWatching = this.stopWatching.bind(this);
   this.watchdir(dir);
   recReaddir(dir, this.watchdir, this.emit.bind(this, 'ready'));
 }
@@ -60,8 +61,21 @@ Watcher.prototype.__proto__ = EventEmitter.prototype;
 Watcher.prototype.watchdir = function(dir) {
   if (this.watched[dir]) return;
   var watcher = fs.watch(dir, this.processChange.bind(this, dir));
-  this.watchers.push(watcher);
-  this.watched[dir] = true;
+  this.watched[dir] = watcher;
+};
+
+/**
+ * Stop watching a dir.s
+ *
+ * @param {string} dir
+ * @private
+ */
+
+Watcher.prototype.stopWatching = function(dir) {
+  if (this.watched[dir]) {
+    this.watched[dir].close();
+    this.watched[dir] = null;
+  }
 };
 
 /**
@@ -71,10 +85,7 @@ Watcher.prototype.watchdir = function(dir) {
  */
 
 Watcher.prototype.close = function() {
-  var watchers = this.watchers;
-  for (var i = 0; i < watchers.length; i++) {
-    watchers[i].close();
-  }
+  Object.keys(this.watched).forEach(this.stopWatching);
   this.removeAllListeners();
 };
 
@@ -92,6 +103,7 @@ Watcher.prototype.processChange = function(dir, event, file) {
   var relativePath = path.join(path.relative(this.dir, dir), file);
   fs.stat(fullPath, function(error, stat) {
     if (error && error.code === 'ENOENT') {
+      this.stopWatching(fullPath);
       return;
     } else if (error) {
       this.emit('error', error);
