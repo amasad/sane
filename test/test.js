@@ -1,23 +1,27 @@
+var os = require('os');
 var fs = require('fs');
 var sane = require('../');
 var rimraf = require('rimraf');
 var path = require('path');
 var assert = require('assert');
 
-var testdir = '/private/tmp/sane_test';
+var tmpdir = os.tmpdir();
+var jo = path.join.bind(path);
+var testdir = jo(tmpdir, 'sane_test');
+
 before(function() {
   rimraf.sync(testdir);
     try {
     fs.mkdirSync(testdir);
   } catch (e) {}
   for (var i = 0; i < 10; i++) {
-    fs.writeFileSync(testdir + '/file_' + i, 'test_' + i);
-    var subdir = testdir + '/sub_' + i;
+    fs.writeFileSync(jo(testdir, 'file_' + i), 'test_' + i);
+    var subdir = jo(testdir, 'sub_' + i);
     try {
       fs.mkdirSync(subdir);
     } catch (e) {}
     for (var j = 0; j < 10; j++) {
-      fs.writeFileSync(subdir + '/file_' + j, 'test_' + j);
+      fs.writeFileSync(jo(subdir, '/file_' + j), 'test_' + j);
     }
   }
 })
@@ -36,7 +40,7 @@ describe('sane(file)', function() {
   });
 
   it('change emits event', function(done) {
-    var testfile = testdir + '/file_1';
+    var testfile = jo(testdir, 'file_1');
     this.watcher.on('change', function(filepath) {
       assert.equal(filepath, path.relative(testdir, testfile));
       done();
@@ -47,7 +51,7 @@ describe('sane(file)', function() {
   });
 
   it('emits change events for subdir files', function(done) {
-    var testfile = testdir + '/sub_1/file_1';
+    var testfile = jo(testdir, 'sub_1', 'file_1');
     this.watcher.on('change', function(filepath) {
       assert.equal(filepath, path.relative(testdir, testfile));
       done();
@@ -58,7 +62,7 @@ describe('sane(file)', function() {
   });
 
   it('adding a file will trigger a change', function(done) {
-    var testfile = testdir + '/file_x' + Math.floor(Math.random() * 10000);
+    var testfile = jo(testdir, 'file_x' + Math.floor(Math.random() * 10000));
     this.watcher.on('change', function(filepath) {
       assert.equal(filepath, path.relative(testdir, testfile));
       done();
@@ -69,8 +73,8 @@ describe('sane(file)', function() {
   });
 
   it('adding in a new subdir will trigger a change', function(done) {
-    var subdir = testdir + '/sub_x' + Math.floor(Math.random() * 10000);
-    var testfile = subdir + '/file_x' + Math.floor(Math.random() * 10000);
+    var subdir = jo(testdir, 'sub_x' + Math.floor(Math.random() * 10000));
+    var testfile = jo(subdir, '/file_x' + Math.floor(Math.random() * 10000));
     this.watcher.on('change', function(filepath) {
       assert.equal(filepath, path.relative(testdir, testfile));
       done();
@@ -84,8 +88,8 @@ describe('sane(file)', function() {
   });
 
   it('closes watchers when dirs are deleted', function(done) {
-    var subdir = testdir + '/sub_1';
-    var testfile = subdir + '/file_1';
+    var subdir = jo(testdir, '/sub_1');
+    var testfile = jo(subdir, '/file_1');
     this.watcher.on('change', function(filepath) {
       assert.equal(filepath, path.relative(testdir, testfile));
       done();
@@ -116,10 +120,10 @@ describe('sane(file, glob)', function() {
       if (++i == 2) done();
     });
     this.watcher.on('ready', function() {
-      fs.writeFileSync(testdir + '/file_1', 'wow');
-      fs.writeFileSync(testdir + '/file_9', 'wow');
-      fs.writeFileSync(testdir + '/file_3', 'wow');
-      fs.writeFileSync(testdir + '/file_2', 'wow');
+      fs.writeFileSync(jo(testdir, 'file_1'), 'wow');
+      fs.writeFileSync(jo(testdir, 'file_9'), 'wow');
+      fs.writeFileSync(jo(testdir, 'file_3'), 'wow');
+      fs.writeFileSync(jo(testdir, 'file_2'), 'wow');
     });
   });
 });
