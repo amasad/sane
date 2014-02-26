@@ -21,7 +21,7 @@ before(function() {
       fs.mkdirSync(subdir);
     } catch (e) {}
     for (var j = 0; j < 10; j++) {
-      fs.writeFileSync(jo(subdir, '/file_' + j), 'test_' + j);
+      fs.writeFileSync(jo(subdir, 'file_' + j), 'test_' + j);
     }
   }
 })
@@ -74,7 +74,7 @@ describe('sane(file)', function() {
 
   it('adding in a new subdir will trigger a change', function(done) {
     var subdir = jo(testdir, 'sub_x' + Math.floor(Math.random() * 10000));
-    var testfile = jo(subdir, '/file_x' + Math.floor(Math.random() * 10000));
+    var testfile = jo(subdir, 'file_x' + Math.floor(Math.random() * 10000));
     this.watcher.on('change', function(filepath) {
       assert.equal(filepath, path.relative(testdir, testfile));
       done();
@@ -88,8 +88,8 @@ describe('sane(file)', function() {
   });
 
   it('closes watchers when dirs are deleted', function(done) {
-    var subdir = jo(testdir, '/sub_1');
-    var testfile = jo(subdir, '/file_1');
+    var subdir = jo(testdir, 'sub_1');
+    var testfile = jo(subdir, 'file_1');
     this.watcher.on('change', function(filepath) {
       assert.equal(filepath, path.relative(testdir, testfile));
       done();
