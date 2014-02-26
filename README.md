@@ -4,6 +4,14 @@ sane
 I've been driven to insanity by node filesystem watcher wrappers.
 Sane aims to be fast, small, and reliable file system watcher.
 
+## Install
+
+Requires node >= v0.10.0.
+
+```
+$ npm install sane
+```
+
 ## API
 
 ### sane(dir, globs)
