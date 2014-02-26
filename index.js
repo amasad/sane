@@ -39,7 +39,6 @@ function Watcher(dir, opts) {
   this.persistent = opts.persistent || false;
   this.globs = opts.glob || [];
   if (!Array.isArray(this.globs)) this.globs = [this.glob];
-  this.watchers = [];
   this.watched = Object.create(null);
   this.changeTimers = Object.create(null);
   this.dir = dir
