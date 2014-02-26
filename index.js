@@ -60,7 +60,11 @@ Watcher.prototype.__proto__ = EventEmitter.prototype;
 
 Watcher.prototype.watchdir = function(dir) {
   if (this.watched[dir]) return;
-  var watcher = fs.watch(dir, this.processChange.bind(this, dir));
+  var watcher = fs.watch(
+    dir,
+    { persistent: this.persistent },
+    this.processChange.bind(this, dir)
+  );
   this.watched[dir] = watcher;
 };
 
