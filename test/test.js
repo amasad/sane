@@ -86,6 +86,10 @@ describe('sane(file)', function() {
   it('removing a dir will emit delete event', function(done) {
     var subdir = jo(testdir, 'sub_9');
     this.watcher.on('delete', function(filepath) {
+      // Ignore delete events for files in the dir.
+      if (path.dirname(filepath) === path.relative(testdir, subdir)) {
+        return;
+      }
       assert.equal(filepath, path.relative(testdir, subdir));
       done();
     });
