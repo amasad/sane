@@ -81,6 +81,9 @@ Watcher.prototype.close = function() {
 /**
  * Process a change event.
  *
+ * @param {string} dir
+ * @param {string} event
+ * @param {string} file
  * @public
  */
 
