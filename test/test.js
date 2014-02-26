@@ -67,6 +67,21 @@ describe('sane(file)', function() {
       fs.writeFileSync(testfile, 'wow');
     });
   });
+
+  it('adding in a new subdir will trigger a change', function(done) {
+    var subdir = testdir + '/sub_x' + Math.floor(Math.random() * 10000);
+    var testfile = subdir + '/file_x' + Math.floor(Math.random() * 10000);
+    this.watcher.on('change', function(filepath) {
+      assert.equal(filepath, path.relative(testdir, testfile));
+      done();
+    });
+    this.watcher.on('ready', function() {
+      fs.mkdirSync(subdir);
+      setTimeout(function() {
+        fs.writeFileSync(testfile, 'wow');
+      }, 300)
+    });
+  });
 });
 
 describe('sane(file, glob)', function() {

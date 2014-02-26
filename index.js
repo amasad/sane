@@ -40,6 +40,7 @@ function Watcher(dir, opts) {
   this.globs = opts.glob || [];
   if (!Array.isArray(this.globs)) this.globs = [this.glob];
   this.watchers = [];
+  this.watched = {};
   this.changeTimers = {};
   this.dir = dir
   this.watchdir = this.watchdir.bind(this);
@@ -57,11 +58,10 @@ Watcher.prototype.__proto__ = EventEmitter.prototype;
  */
 
 Watcher.prototype.watchdir = function(dir) {
-  var relativePath = path.relative(this.dir, dir);
-  var watcher = fs.watch(dir, function(event, filename) {
-    this.onChange(path.join(relativePath, filename));
-  }.bind(this));
+  if (this.watched[dir]) return;
+  var watcher = fs.watch(dir, this.processChange.bind(this, dir));
   this.watchers.push(watcher);
+  this.watched[dir] = true;
 };
 
 /**
@@ -79,26 +79,47 @@ Watcher.prototype.close = function() {
 };
 
 /**
+ * Process a change event.
+ *
+ * @public
+ */
+
+Watcher.prototype.processChange = function(dir, event, file) {
+  var fullPath = path.join(dir, file);
+  var relativePath = path.join(path.relative(this.dir, dir), file);
+  fs.stat(fullPath, function(error, stat) {
+    if (error && error.code === 'ENOENT') {
+      return;
+    } else if (error) {
+      this.emit('error', error);
+      return;
+    } else if (stat.isDirectory()) {
+      this.watchdir(fullPath);
+    } else if (this.globs.length) {
+      var globs = this.globs;
+      for (var i = 0; i < globs.length; i++) {
+        if (minimatch(file, globs[i])) {
+          this.emitChange(relativePath);
+        }
+      }
+    } else {
+      this.emitChange(relativePath);
+    }
+  }.bind(this));
+};
+
+/**
  * Triggers a 'change' event after debounding it to take care of duplicate
  * events on os x.
  *
  * @private
  */
 
-Watcher.prototype.onChange = function(file) {
+Watcher.prototype.emitChange = function(file) {
   clearTimeout(this.changeTimers[file]);
   this.changeTimers[file] = setTimeout(function() {
-    var globs = this.globs;
-    if (globs.length) {
-      for (var i = 0; i < globs.length; i++) {
-        if (minimatch(file, globs[i])) {
-          this.emit('change', file);
-        }
-      }
-    } else {
-      this.emit('change', file);
-    }
     this.changeTimers[file] = null;
+    this.emit('change', file);
   }.bind(this), 100);
 };
 
