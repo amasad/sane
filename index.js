@@ -75,11 +75,12 @@ Watcher.prototype.__proto__ = EventEmitter.prototype;
  */
 
 Watcher.prototype.register = function(filepath) {
+  var relativePath = path.relative(this.root, filepath);
   var globs = this.globs;
   var matched;
   if (globs.length) {
     for (var i = 0; i < globs.length; i++) {
-      if (minimatch(filepath, globs[i])) {
+      if (minimatch(relativePath, globs[i])) {
         matched = true;
         break;
       }
