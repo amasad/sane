@@ -36,7 +36,9 @@ sane.Watcher = Watcher;
 
 function Watcher(dir, opts) {
   opts = opts || {};
-  this.persistent = opts.persistent || false;
+  this.persistent = opts.persistent != null
+    ? opts.persistent
+    : true;
   this.globs = opts.glob || [];
   if (!Array.isArray(this.globs)) this.globs = [this.glob];
   this.watched = Object.create(null);
