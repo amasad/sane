@@ -26,7 +26,7 @@ watcher.on('change', function (filepath) { console.log('file changed', filepath)
 watcher.on('add', function (filepath) { console.log('file added', filepath); });
 watcher.on('delete', function (filepath) { console.log('file deleted', filepath); });
 // close
-watcer.close();
+watcher.close();
 ```
 
 ### sane.Watcher(dir, options)
