@@ -40,6 +40,8 @@ For the glob pattern documentation, see [minimatch](https://github.com/isaacs/mi
 
 ### sane.Watcher#close
 
+Stops watching.
+
 ### sane.Watcher events
 
 Emits the following events:
@@ -49,8 +51,6 @@ All events are passed the file/dir path relative to the root directory
 * `change` when a file changes
 * `add` when a file or directory has been added
 * `delete` when a file or directory has been deleted
-
-Stops watching.
 
 ## License
 
