@@ -197,6 +197,10 @@ Watcher.prototype.close = function() {
  */
 
 Watcher.prototype.processChange = function(dir, event, file) {
+  if (!file) {
+    return;
+  }
+
   var fullPath = path.join(dir, file);
   var relativePath = path.join(path.relative(this.root, dir), file);
   fs.stat(fullPath, function(error, stat) {
