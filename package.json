@@ -1,6 +1,6 @@
 {
   "name": "sane",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "description": "Sane aims to be fast, small, and reliable file system watcher. No bells and whistles, just change events.",
   "main": "index.js",
   "scripts": {
