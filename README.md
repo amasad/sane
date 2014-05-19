@@ -14,10 +14,10 @@ $ npm install sane
 
 ## API
 
-### sane(dir, globs)
+### sane(dir, globs, options)
 
 Watches a directory and all it's descendant directorys for changes, deletions, and additions on files and directories.
-Shortcut for `new sane.Watcher(files, {globs: globs})`.
+Shortcut for `new sane.Watcher(files, {globs: globs, options})`.
 
 ```js
 var watcher = sane('path/to/dir', ['**/*.js, '**/*.css']);
@@ -29,12 +29,16 @@ watcher.on('delete', function (filepath) { console.log('file deleted', filepath)
 watcher.close();
 ```
 
+For `options` see `sane.Watcher`.
+
 ### sane.Watcher(dir, options)
 
 options:
 
 * `persistent`: boolean indicating that the process shouldn't die while we're watching files.
 * `glob`: a single string glob pattern or an array of them.
+* `poll`: puts the watcher in polling mode. Under the hood that means `fs.watchFile`.
+* `interval`: indicates how often the files should be polled. (passed to `fs.watchFile`)
 
 For the glob pattern documentation, see [minimatch](https://github.com/isaacs/minimatch).
 

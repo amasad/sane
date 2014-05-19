@@ -18,7 +18,8 @@
   "license": "MIT",
   "dependencies": {
     "walker": "~1.0.5",
-    "minimatch": "~0.2.14"
+    "minimatch": "~0.2.14",
+    "watch": "~0.10.0"
   },
   "devDependencies": {
     "mocha": "~1.17.1",

@@ -1,5 +1,6 @@
 var fs = require('fs');
 var path = require('path');
+var watch = require('watch');
 var walker = require('walker');
 var minimatch = require('minimatch');
 var EventEmitter = require('events').EventEmitter;
@@ -10,7 +11,7 @@ module.exports = sane;
  * Sugar for creating a watcher.
  *
  * @param {Array<string>} files
- * @param {Array<string>} globs
+ * @param {Array<string>} glob
  * @return {Watcher}
  * @public
  */
@@ -48,16 +49,51 @@ function Watcher(dir, opts) {
   this.watchdir = this.watchdir.bind(this);
   this.register = this.register.bind(this);
   this.stopWatching = this.stopWatching.bind(this);
-  this.watchdir(dir);
-  recReaddir(
-    dir,
-    this.watchdir,
-    this.register,
-    this.emit.bind(this, 'ready')
-  );
+  this.filter = this.filter.bind(this);
+
+  if (opts.poll) {
+    this.polling = true;
+    watch.createMonitor(
+      dir,
+      { interval: opts.interval || DEFAULT_DELAY , filter: this.filter },
+      this.initPoller.bind(this)
+    );
+  } else {
+    this.watchdir(dir);
+    recReaddir(
+      dir,
+      this.watchdir,
+      this.register,
+      this.emit.bind(this, 'ready')
+    );
+  }
 }
 
 Watcher.prototype.__proto__ = EventEmitter.prototype;
+
+/**
+ * Checks a file relative path against the globs array.
+ *
+ * @param {string} relativePath
+ * @return {boolean}
+ * @private
+ */
+
+Watcher.prototype.isFileIncluded = function(relativePath) {
+  var globs = this.globs;
+  var matched;
+  if (globs.length) {
+    for (var i = 0; i < globs.length; i++) {
+      if (minimatch(relativePath, globs[i])) {
+        matched = true;
+        break;
+      }
+    }
+  } else {
+    matched = true;
+  }
+  return matched;
+};
 
 /**
  * Register files that matches our globs to know what to type of event to
@@ -78,19 +114,9 @@ Watcher.prototype.__proto__ = EventEmitter.prototype;
 
 Watcher.prototype.register = function(filepath) {
   var relativePath = path.relative(this.root, filepath);
-  var globs = this.globs;
-  var matched;
-  if (globs.length) {
-    for (var i = 0; i < globs.length; i++) {
-      if (minimatch(relativePath, globs[i])) {
-        matched = true;
-        break;
-      }
-    }
-  } else {
-    matched = true;
+  if (!this.isFileIncluded(relativePath)) {
+    return false;
   }
-  if (!matched) return false;
 
   var dir = path.dirname(filepath);
   if (!this.dirRegistery[dir]) {
@@ -163,16 +189,19 @@ Watcher.prototype.watchdir = function(dir) {
 };
 
 /**
- * Stop watching a dir.s
+ * In polling mode stop watching files and directories, in normal mode, stop
+ * watching files.
  *
- * @param {string} dir
+ * @param {string} filepath
  * @private
  */
 
-Watcher.prototype.stopWatching = function(dir) {
-  if (this.watched[dir]) {
-    this.watched[dir].close();
-    this.watched[dir] = null;
+Watcher.prototype.stopWatching = function(filepath) {
+  if (this.polling) {
+    fs.unwatchFile(filepath);
+  } else if (this.watched[filepath]) {
+    this.watched[filepath].close();
+    this.watched[filepath] = null;
   }
 };
 
@@ -208,7 +237,7 @@ Watcher.prototype.processChange = function(dir, event, file) {
       this.emit('error', error);
     } else if (!error && stat.isDirectory()) {
       this.watchdir(fullPath);
-      this.emitEvent('add', relativePath);
+      this.emitEvent(ADD_EVENT, relativePath);
     } else {
       var registered = this.registered(fullPath);
       if (error && error.code === 'ENOENT') {
@@ -216,13 +245,13 @@ Watcher.prototype.processChange = function(dir, event, file) {
         this.stopWatching(fullPath);
         this.unregisterDir(fullPath);
         if (registered) {
-          this.emitEvent('delete', relativePath);
+          this.emitEvent(DELETE_EVENT, relativePath);
         }
       } else if (registered) {
-        this.emitEvent('change', relativePath);
+        this.emitEvent(CHANGE_EVENT, relativePath);
       } else {
         if (this.register(fullPath)) {
-          this.emitEvent('add', relativePath);
+          this.emitEvent(ADD_EVENT, relativePath);
         }
       }
     }
@@ -242,8 +271,60 @@ Watcher.prototype.emitEvent = function(type, file) {
   this.changeTimers[key] = setTimeout(function() {
     this.changeTimers[key] = null;
     this.emit(type, file);
-  }.bind(this), 100);
+  }.bind(this), DEFAULT_DELAY);
 };
+
+/**
+ * Initiate the polling file watcher with the event emitter passed from
+ * `watch.watchTree`.
+ *
+ * @param {EventEmitter} monitor
+ * @public
+ */
+
+Watcher.prototype.initPoller = function(monitor) {
+  this.watched = monitor.files;
+  monitor.on('changed', this.pollerEmit.bind(this, CHANGE_EVENT));
+  monitor.on('removed', this.pollerEmit.bind(this, DELETE_EVENT));
+  monitor.on('created', this.pollerEmit.bind(this, ADD_EVENT));
+  // 1 second wait because mtime is second-based.
+  setTimeout(this.emit.bind(this, 'ready'), 1000);
+};
+
+/**
+ * Transform and emit an event comming from the poller.
+ *
+ * @param {EventEmitter} monitor
+ * @public
+ */
+
+Watcher.prototype.pollerEmit = function(type, file) {
+  file = path.relative(this.root, file);
+  this.emit(type, file);
+};
+
+/**
+ * Given a fullpath of a file or directory check if we need to watch it.
+ *
+ * @param {string} filepath
+ * @param {object} stat
+ * @public
+ */
+
+Watcher.prototype.filter = function(filepath, stat) {
+  return stat.isDirectory() || this.isFileIncluded(
+    path.relative(this.root, filepath)
+  );
+};
+
+/**
+ * Constants
+ */
+
+var DEFAULT_DELAY = 100;
+var CHANGE_EVENT = 'change';
+var DELETE_EVENT = 'delete';
+var ADD_EVENT = 'add';
 
 /**
  * Traverse a directory recursively calling `callback` on every directory.
@@ -260,3 +341,4 @@ function recReaddir(dir, dirCallback, fileCallback, endCallback) {
     .on('file', fileCallback)
     .on('end', endCallback);
 }
+
