@@ -17,8 +17,8 @@
   "author": "amasad",
   "license": "MIT",
   "dependencies": {
+    "multimatch": "~0.2.0",
     "walker": "~1.0.5",
-    "minimatch": "~0.2.14",
     "watch": "~0.10.0"
   },
   "devDependencies": {
