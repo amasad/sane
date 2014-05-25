@@ -189,19 +189,16 @@ function harness(isPolling) {
   });
 
   describe('sane(file, glob)', function() {
-    beforeEach(function () {
-      this.watcher = new sane.Watcher(
-        testdir,
-        { glob: ['**/file_1', '**/file_2'], poll: isPolling }
-      );
-    });
-
     afterEach(function() {
       this.watcher.close();
     });
 
     it('ignore files according to glob', function (done) {
       var i = 0;
+      this.watcher = new sane.Watcher(
+        testdir,
+        { glob: ['**/file_1', '**/file_2'], poll: isPolling }
+      );
       this.watcher.on('change', function(filepath) {
         assert.ok(filepath.match(/file_(1|2)/), 'only file_1 and file_2');
         if (++i == 2) done();
@@ -210,6 +207,23 @@ function harness(isPolling) {
         fs.writeFileSync(jo(testdir, 'file_1'), 'wow');
         fs.writeFileSync(jo(testdir, 'file_9'), 'wow');
         fs.writeFileSync(jo(testdir, 'file_3'), 'wow');
+        fs.writeFileSync(jo(testdir, 'file_2'), 'wow');
+      });
+    });
+
+    it('excludes files according to glob', function (done) {
+      var i = 0;
+      this.watcher = new sane.Watcher(
+        testdir,
+        { glob: ['**/*', '!**/*.tmp'], poll: isPolling }
+      );
+      this.watcher.on('change', function(filepath) {
+        assert.ok(filepath.match(/file_(1|2)(?!.tmp)/), 'only file_1 and file_2');
+        if (++i == 2) done();
+      });
+      this.watcher.on('ready', function() {
+        fs.writeFileSync(jo(testdir, 'file_1'), 'wow');
+        fs.writeFileSync(jo(testdir, 'file_3.tmp'), 'wow');
         fs.writeFileSync(jo(testdir, 'file_2'), 'wow');
       });
     });

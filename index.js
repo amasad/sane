@@ -2,8 +2,8 @@ var fs = require('fs');
 var path = require('path');
 var watch = require('watch');
 var walker = require('walker');
-var platform = require('os').platform()
-var minimatch = require('minimatch');
+var platform = require('os').platform();
+var minimatch = require('multimatch');
 var EventEmitter = require('events').EventEmitter;
 
 module.exports = sane;
@@ -84,12 +84,7 @@ Watcher.prototype.isFileIncluded = function(relativePath) {
   var globs = this.globs;
   var matched;
   if (globs.length) {
-    for (var i = 0; i < globs.length; i++) {
-      if (minimatch(relativePath, globs[i])) {
-        matched = true;
-        break;
-      }
-    }
+    matched = !!minimatch(relativePath, globs).length;
   } else {
     matched = true;
   }
