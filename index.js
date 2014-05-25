@@ -2,6 +2,7 @@ var fs = require('fs');
 var path = require('path');
 var watch = require('watch');
 var walker = require('walker');
+var platform = require('os').platform()
 var minimatch = require('minimatch');
 var EventEmitter = require('events').EventEmitter;
 
@@ -183,9 +184,16 @@ Watcher.prototype.watchdir = function(dir) {
   var watcher = fs.watch(
     dir,
     { persistent: this.persistent },
-    this.processChange.bind(this, dir)
+    this.normalizeChange.bind(this, dir)
   );
   this.watched[dir] = watcher;
+
+  // Workaround Windows node issue #4337.
+  if (platform === 'win32') {
+    watcher.on('error', function(error) {
+      if (error.code !== 'EPERM') throw error;
+    });
+  }
 };
 
 /**
@@ -217,7 +225,66 @@ Watcher.prototype.close = function() {
 };
 
 /**
- * Process a change event.
+ * On some platforms, as pointed out on the fs docs (most likely just win32)
+ * the file argument might be missing from the fs event. Try to detect what
+ * change by detecting if something was deleted or the most recent file change.
+ *
+ * @param {string} dir
+ * @param {string} event
+ * @param {string} file
+ * @public
+ */
+
+Watcher.prototype.detectChangedFile = function(dir, event, callback) {
+  var found = false;
+  var closest = {mtime: 0}
+  var c = 0;
+  Object.keys(this.dirRegistery[dir]).forEach(function(file, i, arr) {
+    fs.stat(path.join(dir, file), function(error, stat) {
+      if (found) return;
+      if (error) {
+        if (error.code === 'ENOENT') {
+          found = true;
+          callback(file);
+        } else {
+          this.emit('error', error);
+        }
+      } else {
+        if (stat.mtime > closest.mtime) {
+          stat.file = file;
+          closest = stat;
+        }
+        if (arr.length === ++c) {
+          callback(closest.file);
+        }
+      }
+    }.bind(this));
+  }, this);
+};
+
+/**
+ * Normalize fs events and pass it on to be processed.
+ *
+ * @param {string} dir
+ * @param {string} event
+ * @param {string} file
+ * @public
+ */
+
+Watcher.prototype.normalizeChange = function(dir, event, file) {
+  if (!file) {
+    this.detectChangedFile(dir, event, function(actualFile) {
+      if (actualFile) {
+        this.processChange(dir, event, actualFile);
+      }
+    }.bind(this));
+  } else {
+    this.processChange(dir, event, file);
+  }
+};
+
+/**
+ * Process changes.
  *
  * @param {string} dir
  * @param {string} event
@@ -226,18 +293,17 @@ Watcher.prototype.close = function() {
  */
 
 Watcher.prototype.processChange = function(dir, event, file) {
-  if (!file) {
-    return;
-  }
-
   var fullPath = path.join(dir, file);
   var relativePath = path.join(path.relative(this.root, dir), file);
   fs.stat(fullPath, function(error, stat) {
     if (error && error.code !== 'ENOENT') {
       this.emit('error', error);
     } else if (!error && stat.isDirectory()) {
-      this.watchdir(fullPath);
-      this.emitEvent(ADD_EVENT, relativePath);
+      // win32 emits usless change events on dirs.
+      if (event !== 'change') {
+        this.watchdir(fullPath);
+        this.emitEvent(ADD_EVENT, relativePath);
+      }
     } else {
       var registered = this.registered(fullPath);
       if (error && error.code === 'ENOENT') {
@@ -339,6 +405,12 @@ function recReaddir(dir, dirCallback, fileCallback, endCallback) {
   walker(dir)
     .on('dir', dirCallback)
     .on('file', fileCallback)
-    .on('end', endCallback);
+    .on('end', function() {
+      if (platform === 'win32') {
+        setTimeout(endCallback, 1000);
+      } else {
+        endCallback();
+      }
+    });
 }
 

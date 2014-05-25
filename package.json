@@ -4,7 +4,7 @@
   "description": "Sane aims to be fast, small, and reliable file system watcher.",
   "main": "index.js",
   "scripts": {
-    "test": "node_modules/mocha/bin/mocha --bail"
+    "test": "mocha --bail"
   },
   "keywords": [
     "watch",

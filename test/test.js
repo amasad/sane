@@ -9,10 +9,16 @@ var tmpdir = os.tmpdir();
 var jo = path.join.bind(path);
 var testdir = jo(tmpdir, 'sane_test');
 
-describe('sane in polling mode', harness.bind(this, true));
-describe('sand in normal mode', harness.bind(this, false));
+
+describe('sane in polling mode', function() {
+  harness.call(this, true);
+});
+describe('sand in normal mode', function() {
+  harness.call(this, false);
+});
 
 function harness(isPolling) {
+  if (isPolling) this.timeout(5000);
   before(function() {
     rimraf.sync(testdir);
       try {
@@ -83,7 +89,7 @@ function harness(isPolling) {
         done();
       });
       this.watcher.on('ready', function() {
-        fs.unlink(testfile, 'wow');
+        fs.unlinkSync(testfile);
       });
     });
 
@@ -137,15 +143,22 @@ function harness(isPolling) {
       var subdir = jo(testdir, 'sub_1');
       var testfile = jo(subdir, 'file_1');
       var i = 0;
-      this.watcher.on('add', function(filepath) {
-        if (++i === 1) {
-          assert.equal(filepath, path.relative(testdir, subdir));
-        } else {
-          assert.equal(filepath, path.relative(testdir, testfile));
-          done();
-        }
-      });
+      var actualFiles = {};
       this.watcher.on('ready', function() {
+        this.watcher.on('add', function(filepath) {
+          actualFiles[filepath] = true;
+          if (Object.keys(actualFiles).length === 2) {
+            // win32 order is not guaranteed
+            var expectedFiles = {};
+            expectedFiles[path.relative(testdir, subdir)] = true;
+            expectedFiles[path.relative(testdir, testfile)] = true;
+            assert.deepEqual(
+              expectedFiles,
+              actualFiles
+            );
+            done();
+          }
+        });
         rimraf.sync(subdir);
         defer(function() {
           fs.mkdirSync(subdir);
@@ -153,7 +166,7 @@ function harness(isPolling) {
             fs.writeFileSync(testfile, 'wow');
           });
         });
-      });
+      }.bind(this));
     });
 
     it('should be ok to remove and then add the same file', function(done) {
@@ -201,8 +214,9 @@ function harness(isPolling) {
       });
     });
   });
-}
 
-function defer(fn) {
-  setTimeout(fn, 300);
+  function defer(fn) {
+    setTimeout(fn, isPolling ? 1000 : 300);
+  }
+
 }
