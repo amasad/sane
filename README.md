@@ -2,7 +2,11 @@ sane
 ----
 
 I've been driven to insanity by node filesystem watcher wrappers.
-Sane aims to be fast, small, and reliable file system watcher.
+Sane aims to be fast, small, and reliable file system watcher. It does that by:
+
+* Always use fs.watch (unless polling is forced) and sensibly workaround the various issues with it
+* Not introducing native components
+* Not use polling by default and be very slow
 
 ## Install
 
