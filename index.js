@@ -2,7 +2,7 @@ var fs = require('fs');
 var path = require('path');
 var watch = require('watch');
 var walker = require('walker');
-var platform = require('os').platform()
+var platform = require('os').platform();
 var minimatch = require('minimatch');
 var EventEmitter = require('events').EventEmitter;
 
@@ -42,7 +42,7 @@ function Watcher(dir, opts) {
     ? opts.persistent
     : true;
   this.globs = opts.glob || [];
-  if (!Array.isArray(this.globs)) this.globs = [this.glob];
+  if (!Array.isArray(this.globs)) this.globs = [this.globs];
   this.watched = Object.create(null);
   this.changeTimers = Object.create(null);
   this.dirRegistery = Object.create(null);

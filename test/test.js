@@ -34,7 +34,7 @@ function harness(isPolling) {
         fs.writeFileSync(jo(subdir, 'file_' + j), 'test_' + j);
       }
     }
-  })
+  });
 
   describe('sane(file)', function() {
     beforeEach(function () {
@@ -211,6 +211,27 @@ function harness(isPolling) {
         fs.writeFileSync(jo(testdir, 'file_9'), 'wow');
         fs.writeFileSync(jo(testdir, 'file_3'), 'wow');
         fs.writeFileSync(jo(testdir, 'file_2'), 'wow');
+      });
+    });
+  });
+
+  describe('sane shortcut alias', function () {
+    
+    beforeEach(function () {
+      this.watcher = sane(testdir, '**/file_1');
+    });
+
+    afterEach(function() {
+      this.watcher.close();
+    });
+
+    it('allows for shortcut mode using just a string as glob', function (done) { 
+      this.watcher.on('change', function (filepath) {
+        assert.ok(filepath.match(/file_1/));
+        done();
+      });
+      this.watcher.on('ready', function() {
+        fs.writeFileSync(jo(testdir, 'file_1'), 'wow');
       });
     });
   });
