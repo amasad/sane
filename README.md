@@ -5,8 +5,9 @@ I've been driven to insanity by node filesystem watcher wrappers.
 Sane aims to be fast, small, and reliable file system watcher. It does that by:
 
 * Always use fs.watch (unless polling is forced) and sensibly workaround the various issues with it
-* Not introducing native components
-* Not use polling by default and be very slow
+* Sane is all JavaScript, no native components
+* Stay away from polling because it's very slow and cpu intensive
+* Support polling for environments like Vagrant shared directory where there are no native filesystem events
 
 ## Install
 
