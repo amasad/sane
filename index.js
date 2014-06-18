@@ -141,7 +141,7 @@ Watcher.prototype.unregister = function(filepath) {
   var dir = path.dirname(filepath);
   if (this.dirRegistery[dir]) {
     var filename = path.basename(filepath);
-    this.dirRegistery[dir][filename] = null;
+    delete this.dirRegistery[dir][filename];
   }
 };
 
@@ -154,7 +154,7 @@ Watcher.prototype.unregister = function(filepath) {
 
 Watcher.prototype.unregisterDir = function(dirpath) {
   if (this.dirRegistery[dirpath]) {
-    this.dirRegistery[dirpath] = null;
+    delete this.dirRegistery[dirpath];
   }
 };
 
@@ -194,6 +194,10 @@ Watcher.prototype.watchdir = function(dir) {
       if (error.code !== 'EPERM') throw error;
     });
   }
+
+  if (this.root !== dir) {
+    this.register(dir);
+  }
 };
 
 /**
@@ -209,7 +213,7 @@ Watcher.prototype.stopWatching = function(filepath) {
     fs.unwatchFile(filepath);
   } else if (this.watched[filepath]) {
     this.watched[filepath].close();
-    this.watched[filepath] = null;
+    delete this.watched[filepath];
   }
 };
 
@@ -335,7 +339,7 @@ Watcher.prototype.emitEvent = function(type, file) {
   var key = type + '-' + file;
   clearTimeout(this.changeTimers[key]);
   this.changeTimers[key] = setTimeout(function() {
-    this.changeTimers[key] = null;
+    delete this.changeTimers[key];
     this.emit(type, file);
   }.bind(this), DEFAULT_DELAY);
 };
