@@ -243,6 +243,11 @@ Watcher.prototype.detectChangedFile = function(dir, event, callback) {
   var found = false;
   var closest = {mtime: 0}
   var c = 0;
+  if (!this.dirRegistery[dir]) {
+    //When a directory is deleted on Windows, exit, because calling
+    //Object.keys(undefined) throws an exception
+    return;
+  }
   Object.keys(this.dirRegistery[dir]).forEach(function(file, i, arr) {
     fs.stat(path.join(dir, file), function(error, stat) {
       if (found) return;
