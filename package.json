@@ -3,6 +3,10 @@
   "version": "0.5.2",
   "description": "Sane aims to be fast, small, and reliable file system watcher.",
   "main": "index.js",
+  "repository" : {
+    "type" : "git",
+    "url" : "https://github.com/amasad/sane.git"
+  },
   "scripts": {
     "test": "mocha --bail"
   },
