@@ -243,7 +243,7 @@ Watcher.prototype.detectChangedFile = function(dir, event, callback) {
   var found = false;
   var closest = {mtime: 0};
   var c = 0;
-  Object.keys(this.dirRegistery[path.normalize(dir)]).forEach(function(file, i, arr) {
+  Object.keys(this.dirRegistery[dir]).forEach(function(file, i, arr) {
     fs.stat(path.join(dir, file), function(error, stat) {
       if (found) return;
       if (error) {
@@ -283,7 +283,7 @@ Watcher.prototype.normalizeChange = function(dir, event, file) {
       }
     }.bind(this));
   } else {
-    this.processChange(dir, event, file);
+    this.processChange(dir, event, path.normalize(file));
   }
 };
 
@@ -407,8 +407,8 @@ var ADD_EVENT = 'add';
 
 function recReaddir(dir, dirCallback, fileCallback, endCallback) {
   walker(dir)
-    .on('dir', dirCallback)
-    .on('file', fileCallback)
+    .on('dir', normalizeProxy(dirCallback))
+    .on('file', normalizeProxy(fileCallback))
     .on('end', function() {
       if (platform === 'win32') {
         setTimeout(endCallback, 1000);
@@ -418,3 +418,17 @@ function recReaddir(dir, dirCallback, fileCallback, endCallback) {
     });
 }
 
+/**
+ * Returns a callback that when called will normalize a path and call the
+ * original callback
+ *
+ * @param {function} callback
+ * @return {function}
+ * @private
+ */
+
+function normalizeProxy(callback) {
+  return function(filepath) {
+    return callback(path.normalize(filepath));
+  }
+}
