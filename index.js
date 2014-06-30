@@ -241,9 +241,9 @@ Watcher.prototype.close = function() {
 
 Watcher.prototype.detectChangedFile = function(dir, event, callback) {
   var found = false;
-  var closest = {mtime: 0}
+  var closest = {mtime: 0};
   var c = 0;
-  Object.keys(this.dirRegistery[dir]).forEach(function(file, i, arr) {
+  Object.keys(this.dirRegistery[path.normalize(dir)]).forEach(function(file, i, arr) {
     fs.stat(path.join(dir, file), function(error, stat) {
       if (found) return;
       if (error) {
