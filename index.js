@@ -276,6 +276,7 @@ Watcher.prototype.detectChangedFile = function(dir, event, callback) {
  */
 
 Watcher.prototype.normalizeChange = function(dir, event, file) {
+  dir = path.normalize(dir);
   if (!file) {
     this.detectChangedFile(dir, event, function(actualFile) {
       if (actualFile) {
