@@ -22,7 +22,7 @@ $ npm install sane
 ### sane(dir, globs, options)
 
 Watches a directory and all it's descendant directorys for changes, deletions, and additions on files and directories.
-Shortcut for `new sane.Watcher(files, {globs: globs, options})`.
+Shortcut for `new sane.Watcher(dir, {glob: globs, ..options})`.
 
 ```js
 var watcher = sane('path/to/dir', ['**/*.js, '**/*.css']);

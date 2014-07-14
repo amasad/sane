@@ -11,14 +11,17 @@ module.exports = sane;
 /**
  * Sugar for creating a watcher.
  *
- * @param {Array<string>} files
- * @param {Array<string>} glob
+ * @param {String} dir
+ * @param {Array<String>} glob
+ * @param {Object} opts
  * @return {Watcher}
  * @public
  */
 
-function sane(files, glob) {
-  return new Watcher(files, {glob: glob});
+function sane(dir, glob, opts) {
+  opts = opts || {};
+  opts.glob = glob;
+  return new Watcher(dir, opts);
 }
 
 /**
@@ -28,11 +31,11 @@ function sane(files, glob) {
 sane.Watcher = Watcher;
 
 /**
- * Watches files and dirs.
+ * Watches `dir`.
  *
  * @class Watcher
- * @param {Array<string>} files
- * @param {object} opts
+ * @param String dir
+ * @param {Object} opts
  * @public
  */
 
