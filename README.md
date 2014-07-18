@@ -25,7 +25,7 @@ Watches a directory and all it's descendant directorys for changes, deletions, a
 Shortcut for `new sane.Watcher(dir, {glob: globs, ..options})`.
 
 ```js
-var watcher = sane('path/to/dir', ['**/*.js, '**/*.css']);
+var watcher = sane('path/to/dir', ['**/*.js', '**/*.css']);
 watcher.on('ready', function () { console.log('ready') });
 watcher.on('change', function (filepath) { console.log('file changed', filepath); });
 watcher.on('add', function (filepath) { console.log('file added', filepath); });
