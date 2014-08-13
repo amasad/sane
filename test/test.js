@@ -51,8 +51,9 @@ function harness(isPolling) {
 
     it('change emits event', function(done) {
       var testfile = jo(testdir, 'file_1');
-      this.watcher.on('change', function(filepath) {
+      this.watcher.on('change', function(filepath, dir) {
         assert.equal(filepath, path.relative(testdir, testfile));
+        assert.equal(dir, testdir);
         done();
       });
       this.watcher.on('ready', function() {
@@ -62,8 +63,9 @@ function harness(isPolling) {
 
     it('emits change events for subdir files', function(done) {
       var testfile = jo(testdir, 'sub_1', 'file_1');
-      this.watcher.on('change', function(filepath) {
+      this.watcher.on('change', function(filepath, dir) {
         assert.equal(filepath, path.relative(testdir, testfile));
+        assert.equal(dir, testdir);
         done();
       });
       this.watcher.on('ready', function() {
@@ -73,8 +75,9 @@ function harness(isPolling) {
 
     it('adding a file will trigger a change', function(done) {
       var testfile = jo(testdir, 'file_x' + Math.floor(Math.random() * 10000));
-      this.watcher.on('add', function(filepath) {
+      this.watcher.on('add', function(filepath, dir) {
         assert.equal(filepath, path.relative(testdir, testfile));
+        assert.equal(dir, testdir);
         done();
       });
       this.watcher.on('ready', function() {
@@ -84,8 +87,9 @@ function harness(isPolling) {
 
     it('removing a file will emit delete event', function(done) {
       var testfile = jo(testdir, 'file_9');
-      this.watcher.on('delete', function(filepath) {
+      this.watcher.on('delete', function(filepath, dir) {
         assert.equal(filepath, path.relative(testdir, testfile));
+        assert.equal(dir, testdir);
         done();
       });
       this.watcher.on('ready', function() {
@@ -95,12 +99,13 @@ function harness(isPolling) {
 
     it('removing a dir will emit delete event', function(done) {
       var subdir = jo(testdir, 'sub_9');
-      this.watcher.on('delete', function(filepath) {
+      this.watcher.on('delete', function(filepath, dir) {
         // Ignore delete events for files in the dir.
         if (path.dirname(filepath) === path.relative(testdir, subdir)) {
           return;
         }
         assert.equal(filepath, path.relative(testdir, subdir));
+        assert.equal(dir, testdir);
         done();
       });
       this.watcher.on('ready', function() {
@@ -110,8 +115,9 @@ function harness(isPolling) {
 
     it('adding a dir will emit an add event', function(done) {
       var subdir = jo(testdir, 'sub_x' + Math.floor(Math.random() * 10000));
-      this.watcher.on('add', function(filepath) {
+      this.watcher.on('add', function(filepath, dir) {
         assert.equal(filepath, path.relative(testdir, subdir));
+        assert.equal(dir, testdir);
         done();
       });
       this.watcher.on('ready', function() {
@@ -123,11 +129,13 @@ function harness(isPolling) {
       var subdir = jo(testdir, 'sub_x' + Math.floor(Math.random() * 10000));
       var testfile = jo(subdir, 'file_x' + Math.floor(Math.random() * 10000));
       var i = 0;
-      this.watcher.on('add', function(filepath) {
+      this.watcher.on('add', function(filepath, dir) {
         if (++i === 1) {
           assert.equal(filepath, path.relative(testdir, subdir));
+          assert.equal(dir, testdir);
         } else {
           assert.equal(filepath, path.relative(testdir, testfile));
+          assert.equal(dir, testdir);
           done();
         }
       });
@@ -172,11 +180,13 @@ function harness(isPolling) {
     it('should be ok to remove and then add the same file', function(done) {
       var testfile = jo(testdir, 'sub_8', 'file_1');
       var i = 0;
-      this.watcher.on('add', function(filepath) {
+      this.watcher.on('add', function(filepath, dir) {
         assert.equal(filepath, path.relative(testdir, testfile));
+        assert.equal(dir, testdir);
       });
-      this.watcher.on('delete', function(filepath) {
+      this.watcher.on('delete', function(filepath, dir) {
         assert.equal(filepath, path.relative(testdir, testfile));
+        assert.equal(dir, testdir);
         done();
       });
       this.watcher.on('ready', function() {
@@ -202,8 +212,9 @@ function harness(isPolling) {
 
     it('ignore files according to glob', function (done) {
       var i = 0;
-      this.watcher.on('change', function(filepath) {
+      this.watcher.on('change', function(filepath, dir) {
         assert.ok(filepath.match(/file_(1|2)/), 'only file_1 and file_2');
+        assert.equal(dir, testdir);
         if (++i == 2) done();
       });
       this.watcher.on('ready', function() {
@@ -226,8 +237,9 @@ function harness(isPolling) {
     });
 
     it('allows for shortcut mode using just a string as glob', function (done) { 
-      this.watcher.on('change', function (filepath) {
+      this.watcher.on('change', function (filepath, dir) {
         assert.ok(filepath.match(/file_1/));
+        assert.equal(dir, testdir);
         done();
       });
       this.watcher.on('ready', function() {
