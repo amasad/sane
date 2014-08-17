@@ -27,9 +27,9 @@ Shortcut for `new sane.Watcher(dir, {glob: globs, ..options})`.
 ```js
 var watcher = sane('path/to/dir', ['**/*.js', '**/*.css']);
 watcher.on('ready', function () { console.log('ready') });
-watcher.on('change', function (filepath) { console.log('file changed', filepath); });
-watcher.on('add', function (filepath) { console.log('file added', filepath); });
-watcher.on('delete', function (filepath) { console.log('file deleted', filepath); });
+watcher.on('change', function (filepath, root) { console.log('file changed', filepath); });
+watcher.on('add', function (filepath, root) { console.log('file added', filepath); });
+watcher.on('delete', function (filepath, root) { console.log('file deleted', filepath); });
 // close
 watcher.close();
 ```

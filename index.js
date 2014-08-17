@@ -343,7 +343,7 @@ Watcher.prototype.emitEvent = function(type, file) {
   clearTimeout(this.changeTimers[key]);
   this.changeTimers[key] = setTimeout(function() {
     delete this.changeTimers[key];
-    this.emit(type, file);
+    this.emit(type, file, this.root);
   }.bind(this), DEFAULT_DELAY);
 };
 
@@ -373,7 +373,7 @@ Watcher.prototype.initPoller = function(monitor) {
 
 Watcher.prototype.pollerEmit = function(type, file) {
   file = path.relative(this.root, file);
-  this.emit(type, file);
+  this.emit(type, file, this.root);
 };
 
 /**
