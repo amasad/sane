@@ -13,7 +13,7 @@ var testdir = jo(tmpdir, 'sane_test');
 describe('sane in polling mode', function() {
   harness.call(this, true);
 });
-describe('sand in normal mode', function() {
+describe('sane in normal mode', function() {
   harness.call(this, false);
 });
 
@@ -95,6 +95,33 @@ function harness(isPolling) {
       this.watcher.on('ready', function() {
         fs.unlinkSync(testfile);
       });
+    });
+
+    it('chaging, removing, deleting should emit the "all" event', function(done) {
+      var toChange = jo(testdir, 'file_4');
+      var toDelete = jo(testdir, 'file_5');
+      var toAdd = jo(testdir, 'file_x' + Math.floor(Math.random() * 10000));
+      var i = 0;
+
+      this.watcher.on('all', function(type, filepath, dir) {
+        assert.equal(dir, testdir);
+        if (type === 'change') {
+          assert.equal(filepath, path.relative(dir, toChange));
+        } else if (type === 'delete') {
+          assert.equal(filepath, path.relative(dir, toDelete));
+        } else if (type === 'add') {
+          assert.equal(filepath, path.relative(dir, toAdd));
+        }
+        if (++i === 3) {
+          done();
+        }
+      });
+
+      this.watcher.on('ready', function() {
+        fs.writeFileSync(toChange, 'hai');
+        fs.unlinkSync(toDelete);
+        fs.writeFileSync(toAdd, 'hai wow');
+      })
     });
 
     it('removing a dir will emit delete event', function(done) {
@@ -227,7 +254,6 @@ function harness(isPolling) {
   });
 
   describe('sane shortcut alias', function () {
-    
     beforeEach(function () {
       this.watcher = sane(testdir, '**/file_1');
     });
@@ -236,7 +262,7 @@ function harness(isPolling) {
       this.watcher.close();
     });
 
-    it('allows for shortcut mode using just a string as glob', function (done) { 
+    it('allows for shortcut mode using just a string as glob', function (done) {
       this.watcher.on('change', function (filepath, dir) {
         assert.ok(filepath.match(/file_1/));
         assert.equal(dir, testdir);
@@ -251,5 +277,4 @@ function harness(isPolling) {
   function defer(fn) {
     setTimeout(fn, isPolling ? 1000 : 300);
   }
-
 }

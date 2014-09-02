@@ -8,6 +8,17 @@ var EventEmitter = require('events').EventEmitter;
 
 module.exports = sane;
 
+
+/**
+ * Constants
+ */
+
+var DEFAULT_DELAY = 100;
+var CHANGE_EVENT = 'change';
+var DELETE_EVENT = 'delete';
+var ADD_EVENT = 'add';
+var ALL_EVENT = 'all';
+
 /**
  * Sugar for creating a watcher.
  *
@@ -344,6 +355,7 @@ Watcher.prototype.emitEvent = function(type, file) {
   this.changeTimers[key] = setTimeout(function() {
     delete this.changeTimers[key];
     this.emit(type, file, this.root);
+    this.emit(ALL_EVENT, type, file, this.root);
   }.bind(this), DEFAULT_DELAY);
 };
 
@@ -374,6 +386,7 @@ Watcher.prototype.initPoller = function(monitor) {
 Watcher.prototype.pollerEmit = function(type, file) {
   file = path.relative(this.root, file);
   this.emit(type, file, this.root);
+  this.emit(ALL_EVENT, type, file, this.root);
 };
 
 /**
@@ -390,14 +403,6 @@ Watcher.prototype.filter = function(filepath, stat) {
   );
 };
 
-/**
- * Constants
- */
-
-var DEFAULT_DELAY = 100;
-var CHANGE_EVENT = 'change';
-var DELETE_EVENT = 'delete';
-var ADD_EVENT = 'add';
 
 /**
  * Traverse a directory recursively calling `callback` on every directory.
