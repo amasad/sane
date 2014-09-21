@@ -69,14 +69,14 @@ function Watcher(dir, opts) {
   if (opts.poll) {
     this.polling = true;
     watch.createMonitor(
-      dir,
+      this.root,
       { interval: opts.interval || DEFAULT_DELAY , filter: this.filter },
       this.initPoller.bind(this)
     );
   } else {
-    this.watchdir(dir);
+    this.watchdir(this.root);
     recReaddir(
-      dir,
+      this.root,
       this.watchdir,
       this.register,
       this.emit.bind(this, 'ready')
@@ -254,6 +254,10 @@ Watcher.prototype.close = function() {
  */
 
 Watcher.prototype.detectChangedFile = function(dir, event, callback) {
+  if (!this.dirRegistery[dir]) {
+    throw new Error('Unable to find directory in registery: ' + dir);
+  }
+
   var found = false;
   var closest = {mtime: 0};
   var c = 0;

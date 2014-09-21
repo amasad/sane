@@ -102,15 +102,21 @@ function harness(isPolling) {
       var toDelete = jo(testdir, 'file_5');
       var toAdd = jo(testdir, 'file_x' + Math.floor(Math.random() * 10000));
       var i = 0;
+      var added = false;
 
       this.watcher.on('all', function(type, filepath, dir) {
         assert.equal(dir, testdir);
         if (type === 'change') {
+          // Windows emits additional change events for newly created files.
+          if (added && filepath === path.relative(dir, toAdd)) {
+            return;
+          }
           assert.equal(filepath, path.relative(dir, toChange));
         } else if (type === 'delete') {
           assert.equal(filepath, path.relative(dir, toDelete));
         } else if (type === 'add') {
           assert.equal(filepath, path.relative(dir, toAdd));
+          added = true;
         }
         if (++i === 3) {
           done();
