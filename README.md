@@ -11,11 +11,11 @@ Sane aims to be fast, small, and reliable file system watcher. It does that by:
 
 ## Install
 
-Requires node >= v0.10.0.
-
 ```
 $ npm install sane
 ```
+
+If you're using node < v0.10.0 then make sure to start sane with `poll: true`.
 
 ## API
 

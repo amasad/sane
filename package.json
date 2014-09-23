@@ -30,7 +30,7 @@
     "rimraf": "~2.2.6"
   },
   "engines": {
-    "node": ">=0.10.0"
+    "node": ">=0.6.0"
   },
   "bugs": {
     "url": "https://github.com/amasad/sane/issues"
