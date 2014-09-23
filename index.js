@@ -324,7 +324,7 @@ Watcher.prototype.processChange = function(dir, event, file) {
       // win32 emits usless change events on dirs.
       if (event !== 'change') {
         this.watchdir(fullPath);
-        this.emitEvent(ADD_EVENT, relativePath);
+        this.emitEvent(ADD_EVENT, relativePath, stat);
       }
     } else {
       var registered = this.registered(fullPath);
@@ -336,10 +336,10 @@ Watcher.prototype.processChange = function(dir, event, file) {
           this.emitEvent(DELETE_EVENT, relativePath);
         }
       } else if (registered) {
-        this.emitEvent(CHANGE_EVENT, relativePath);
+        this.emitEvent(CHANGE_EVENT, relativePath, stat);
       } else {
         if (this.register(fullPath)) {
-          this.emitEvent(ADD_EVENT, relativePath);
+          this.emitEvent(ADD_EVENT, relativePath, stat);
         }
       }
     }
@@ -353,13 +353,13 @@ Watcher.prototype.processChange = function(dir, event, file) {
  * @private
  */
 
-Watcher.prototype.emitEvent = function(type, file) {
+Watcher.prototype.emitEvent = function(type, file, stat) {
   var key = type + '-' + file;
   clearTimeout(this.changeTimers[key]);
   this.changeTimers[key] = setTimeout(function() {
     delete this.changeTimers[key];
-    this.emit(type, file, this.root);
-    this.emit(ALL_EVENT, type, file, this.root);
+    this.emit(type, file, this.root, stat);
+    this.emit(ALL_EVENT, type, file, this.root, stat);
   }.bind(this), DEFAULT_DELAY);
 };
 
@@ -387,10 +387,16 @@ Watcher.prototype.initPoller = function(monitor) {
  * @public
  */
 
-Watcher.prototype.pollerEmit = function(type, file) {
+Watcher.prototype.pollerEmit = function(type, file, stat) {
   file = path.relative(this.root, file);
-  this.emit(type, file, this.root);
-  this.emit(ALL_EVENT, type, file, this.root);
+
+  if (type === DELETE_EVENT) {
+    // Matching the non-polling API
+    stat = null;
+  }
+
+  this.emit(type, file, this.root, stat);
+  this.emit(ALL_EVENT, type, file, this.root, stat);
 };
 
 /**

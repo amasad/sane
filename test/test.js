@@ -51,7 +51,8 @@ function harness(isPolling) {
 
     it('change emits event', function(done) {
       var testfile = jo(testdir, 'file_1');
-      this.watcher.on('change', function(filepath, dir) {
+      this.watcher.on('change', function(filepath, dir, stat) {
+        assert(stat instanceof fs.Stats);
         assert.equal(filepath, path.relative(testdir, testfile));
         assert.equal(dir, testdir);
         done();
@@ -75,7 +76,8 @@ function harness(isPolling) {
 
     it('adding a file will trigger a change', function(done) {
       var testfile = jo(testdir, 'file_x' + Math.floor(Math.random() * 10000));
-      this.watcher.on('add', function(filepath, dir) {
+      this.watcher.on('add', function(filepath, dir, stat) {
+        assert(stat instanceof fs.Stats);
         assert.equal(filepath, path.relative(testdir, testfile));
         assert.equal(dir, testdir);
         done();
@@ -104,17 +106,20 @@ function harness(isPolling) {
       var i = 0;
       var added = false;
 
-      this.watcher.on('all', function(type, filepath, dir) {
+      this.watcher.on('all', function(type, filepath, dir, stat) {
         assert.equal(dir, testdir);
         if (type === 'change') {
           // Windows emits additional change events for newly created files.
           if (added && filepath === path.relative(dir, toAdd)) {
             return;
           }
+          assert(stat instanceof fs.Stats);
           assert.equal(filepath, path.relative(dir, toChange));
         } else if (type === 'delete') {
+          assert(!stat);
           assert.equal(filepath, path.relative(dir, toDelete));
         } else if (type === 'add') {
+          assert(stat instanceof fs.Stats);
           assert.equal(filepath, path.relative(dir, toAdd));
           added = true;
         }
@@ -148,7 +153,8 @@ function harness(isPolling) {
 
     it('adding a dir will emit an add event', function(done) {
       var subdir = jo(testdir, 'sub_x' + Math.floor(Math.random() * 10000));
-      this.watcher.on('add', function(filepath, dir) {
+      this.watcher.on('add', function(filepath, dir, stat) {
+        assert(stat instanceof fs.Stats);
         assert.equal(filepath, path.relative(testdir, subdir));
         assert.equal(dir, testdir);
         done();
@@ -162,7 +168,8 @@ function harness(isPolling) {
       var subdir = jo(testdir, 'sub_x' + Math.floor(Math.random() * 10000));
       var testfile = jo(subdir, 'file_x' + Math.floor(Math.random() * 10000));
       var i = 0;
-      this.watcher.on('add', function(filepath, dir) {
+      this.watcher.on('add', function(filepath, dir, stat) {
+        assert(stat instanceof fs.Stats);
         if (++i === 1) {
           assert.equal(filepath, path.relative(testdir, subdir));
           assert.equal(dir, testdir);
