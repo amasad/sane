@@ -265,7 +265,7 @@ Watcher.prototype.detectChangedFile = function(dir, event, callback) {
     fs.stat(path.join(dir, file), function(error, stat) {
       if (found) return;
       if (error) {
-        if (error.code === 'ENOENT') {
+        if (error.code === 'ENOENT' || (platform === 'win32' && error.code === 'EPERM')) {
           found = true;
           callback(file);
         } else {
