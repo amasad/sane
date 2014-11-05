@@ -190,16 +190,17 @@ function harness(isPolling) {
     it('closes watchers when dirs are deleted', function(done) {
       var subdir = jo(testdir, 'sub_1');
       var testfile = jo(subdir, 'file_1');
-      var i = 0;
       var actualFiles = {};
+      var expectedFiles = {};
+      expectedFiles[path.relative(testdir, subdir)] = true;
+      expectedFiles[path.relative(testdir, testfile)] = true;
       this.watcher.on('ready', function() {
         this.watcher.on('add', function(filepath) {
-          actualFiles[filepath] = true;
+          // win32 order is not guaranteed and events may leak between tests
+          if (expectedFiles[filepath]) {
+            actualFiles[filepath] = true;
+          }
           if (Object.keys(actualFiles).length === 2) {
-            // win32 order is not guaranteed
-            var expectedFiles = {};
-            expectedFiles[path.relative(testdir, subdir)] = true;
-            expectedFiles[path.relative(testdir, testfile)] = true;
             assert.deepEqual(
               expectedFiles,
               actualFiles
