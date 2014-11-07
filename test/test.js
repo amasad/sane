@@ -11,14 +11,27 @@ var testdir = jo(tmpdir, 'sane_test');
 
 
 describe('sane in polling mode', function() {
-  harness.call(this, true);
+  harness.call(this, {poll: true});
 });
 describe('sane in normal mode', function() {
-  harness.call(this, false);
+  harness.call(this, {});
+});
+describe('sane in watchman mode', function() {
+  harness.call(this, {watchman: true})
 });
 
-function harness(isPolling) {
-  if (isPolling) this.timeout(5000);
+function getWatcherClass(mode) {
+  if (mode.watchman) {
+    return sane.WatchmanWatcher;
+  } else if (mode.poll) {
+    return sane.PollWatcher;
+  } else {
+    return sane.NodeWatcher;
+  }
+}
+
+function harness(mode) {
+  if (mode.poll) this.timeout(5000);
   before(function() {
     rimraf.sync(testdir);
       try {
@@ -38,11 +51,12 @@ function harness(isPolling) {
 
   describe('sane(file)', function() {
     beforeEach(function () {
-      this.watcher = new sane.Watcher(testdir, { poll: isPolling });
+      var Watcher = getWatcherClass(mode);
+      this.watcher = new Watcher(testdir);
     });
 
-    afterEach(function() {
-      this.watcher.close();
+    afterEach(function(done) {
+      this.watcher.close(done);
     });
 
     it('emits a ready event', function(done) {
@@ -63,7 +77,8 @@ function harness(isPolling) {
     });
 
     it('emits change events for subdir files', function(done) {
-      var testfile = jo(testdir, 'sub_1', 'file_1');
+      var subdir = 'sub_1';
+      var testfile = jo(testdir, subdir, 'file_1');
       this.watcher.on('change', function(filepath, dir) {
         assert.equal(filepath, path.relative(testdir, testfile));
         assert.equal(dir, testdir);
@@ -74,7 +89,7 @@ function harness(isPolling) {
       });
     });
 
-    it('adding a file will trigger a change', function(done) {
+    it('adding a file will trigger an add event', function(done) {
       var testfile = jo(testdir, 'file_x' + Math.floor(Math.random() * 10000));
       this.watcher.on('add', function(filepath, dir, stat) {
         assert(stat instanceof fs.Stats);
@@ -164,7 +179,7 @@ function harness(isPolling) {
       });
     });
 
-    it('adding in a new subdir will trigger an add event', function(done) {
+    it('adding in a subdir will trigger an add event', function(done) {
       var subdir = jo(testdir, 'sub_x' + Math.floor(Math.random() * 10000));
       var testfile = jo(subdir, 'file_x' + Math.floor(Math.random() * 10000));
       var i = 0;
@@ -241,14 +256,15 @@ function harness(isPolling) {
 
   describe('sane(file, glob)', function() {
     beforeEach(function () {
-      this.watcher = new sane.Watcher(
+      var Watcher = getWatcherClass(mode);
+      this.watcher = new Watcher(
         testdir,
-        { glob: ['**/file_1', '**/file_2'], poll: isPolling }
+        { glob: ['**/file_1', '**/file_2'] }
       );
     });
 
-    afterEach(function() {
-      this.watcher.close();
+    afterEach(function(done) {
+      this.watcher.close(done);
     });
 
     it('ignore files according to glob', function (done) {
@@ -269,11 +285,15 @@ function harness(isPolling) {
 
   describe('sane shortcut alias', function () {
     beforeEach(function () {
-      this.watcher = sane(testdir, '**/file_1');
+      this.watcher = sane(testdir, {
+        glob: '**/file_1',
+        poll: mode.poll,
+        watchman: mode.watchman
+      });
     });
 
-    afterEach(function() {
-      this.watcher.close();
+    afterEach(function(done) {
+      this.watcher.close(done);
     });
 
     it('allows for shortcut mode using just a string as glob', function (done) {
@@ -289,6 +309,6 @@ function harness(isPolling) {
   });
 
   function defer(fn) {
-    setTimeout(fn, isPolling ? 1000 : 300);
+    setTimeout(fn, mode.poll ? 1000 : 300);
   }
 }

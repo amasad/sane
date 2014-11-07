@@ -4,10 +4,12 @@ sane
 I've been driven to insanity by node filesystem watcher wrappers.
 Sane aims to be fast, small, and reliable file system watcher. It does that by:
 
-* Always use fs.watch (unless polling is forced) and sensibly workaround the various issues with it
-* Sane is all JavaScript, no native components
-* Stay away from polling because it's very slow and cpu intensive
-* Support polling for environments like Vagrant shared directory where there are no native filesystem events
+* By default stays away from fs polling because it's very slow and cpu intensive
+* Uses `fs.watch` by default and sensibly works around the various issues
+* Maintains a consistent API across different platforms
+* Where `fs.watch` is not reliable you have the choice of using the following alternatives:
+  * [the facebook watchman library](https://facebook.github.io/watchman/)
+  * polling
 
 ## Install
 
@@ -15,14 +17,22 @@ Sane aims to be fast, small, and reliable file system watcher. It does that by:
 $ npm install sane
 ```
 
-If you're using node < v0.10.0 then make sure to start sane with `poll: true`.
+## How to choose a mode
+
+Don't worry too much about choosing the correct mode upfront because sane
+maintains the same API across all modes and will be easy to switch.
+
+* If you're only supporting Linux and OS X, `watchman` would be the most reliable mode
+* If you're using node > v0.10.0 use the default mode
+* If you're running OS X and you're watching a lot of directories and you're running into https://github.com/joyent/node/issues/5463, use `watchman`
+* If you're in an environment where native file system events aren't available (like Vagrant), you should use polling
+* Otherwise, the default mode should work well for you
 
 ## API
 
-### sane(dir, globs, options)
+### sane(dir, options)
 
-Watches a directory and all it's descendant directorys for changes, deletions, and additions on files and directories.
-Shortcut for `new sane.Watcher(dir, {glob: globs, ..options})`.
+Watches a directory and all it's descendant directories for changes, deletions, and additions on files and directories.
 
 ```js
 var watcher = sane('path/to/dir', ['**/*.js', '**/*.css']);
@@ -34,24 +44,34 @@ watcher.on('delete', function (filepath, root) { console.log('file deleted', fil
 watcher.close();
 ```
 
-For `options` see `sane.Watcher`.
-
-### sane.Watcher(dir, options)
-
 options:
 
-* `persistent`: boolean indicating that the process shouldn't die while we're watching files.
 * `glob`: a single string glob pattern or an array of them.
 * `poll`: puts the watcher in polling mode. Under the hood that means `fs.watchFile`.
-* `interval`: indicates how often the files should be polled. (passed to `fs.watchFile`)
+* `watchman`: makes the watcher use [watchman](https://facebook.github.io/watchman/)
 
 For the glob pattern documentation, see [minimatch](https://github.com/isaacs/minimatch).
+If you choose to use `watchman` you'll have to [install watchman yourself](https://facebook.github.io/watchman/docs/install.html)).
 
-### sane.Watcher#close
+### sane.NodeWatcher(dir, options)
+
+The default watcher class. Uses `fs.watch` under the hood, and takes the same options as `sane(options, dir)`.
+
+### sane.WatchmanWatcher(dir, options)
+
+The watchman watcher class. Takes the same options as `sane(options, dir)`.
+
+### sane.PollWatcher(dir, options)
+
+The polling watcher class. Takes the same options as `sane(options, dir)` with the addition of:
+
+* interval: indicates how often the files should be polled. (passed to fs.watchFile)
+
+### sane.{Node|Watchman|PollWatcher}#close
 
 Stops watching.
 
-### sane.Watcher events
+### sane.{Node|Watchman|PollWatcher} events
 
 Emits the following events:
 
