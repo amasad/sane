@@ -67,11 +67,11 @@ The polling watcher class. Takes the same options as `sane(options, dir)` with t
 
 * interval: indicates how often the files should be polled. (passed to fs.watchFile)
 
-### sane.{Node|Watchman|PollWatcher}#close
+### sane.{Node|Watchman|Poll}Watcher#close
 
 Stops watching.
 
-### sane.{Node|Watchman|PollWatcher} events
+### sane.{Node|Watchman|Poll}Watcher events
 
 Emits the following events:
 
