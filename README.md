@@ -35,7 +35,7 @@ maintains the same API across all modes and will be easy to switch.
 Watches a directory and all it's descendant directories for changes, deletions, and additions on files and directories.
 
 ```js
-var watcher = sane('path/to/dir', ['**/*.js', '**/*.css']);
+var watcher = sane('path/to/dir', {glob: ['**/*.js', '**/*.css']});
 watcher.on('ready', function () { console.log('ready') });
 watcher.on('change', function (filepath, root, stat) { console.log('file changed', filepath); });
 watcher.on('add', function (filepath, root, stat) { console.log('file added', filepath); });
