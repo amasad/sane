@@ -13,7 +13,7 @@ exports.ADD_EVENT = 'add';
 exports.ALL_EVENT = 'all';
 
 /**
- * Checks a file relative path against the globs array.
+ * Assigns options to the watcher.
  *
  * @param {NodeWatcher|PollWatcher|WatchmanWatcher} watcher
  * @param {?object} opts
@@ -24,6 +24,7 @@ exports.ALL_EVENT = 'all';
 exports.assignOptions = function(watcher, opts) {
   opts = opts || {};
   watcher.globs = opts.glob || [];
+  watcher.dot = opts.dot || false;
   if (!Array.isArray(watcher.globs)) {
     watcher.globs = [watcher.globs];
   }
@@ -39,11 +40,11 @@ exports.assignOptions = function(watcher, opts) {
  * @public
  */
 
-exports.isFileIncluded = function(globs, relativePath) {
+exports.isFileIncluded = function(globs, dot, relativePath) {
   var matched;
   if (globs.length) {
     for (var i = 0; i < globs.length; i++) {
-      if (minimatch(relativePath, globs[i])) {
+      if (minimatch(relativePath, globs[i], {dot: dot})) {
         matched = true;
         break;
       }

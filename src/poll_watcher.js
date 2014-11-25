@@ -59,6 +59,7 @@ PollWatcher.prototype.__proto__ = EventEmitter.prototype;
 PollWatcher.prototype.filter = function(filepath, stat) {
   return stat.isDirectory() || common.isFileIncluded(
     this.globs,
+    this.dot,
     path.relative(this.root, filepath)
   );
 };

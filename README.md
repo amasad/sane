@@ -49,6 +49,7 @@ options:
 * `glob`: a single string glob pattern or an array of them.
 * `poll`: puts the watcher in polling mode. Under the hood that means `fs.watchFile`.
 * `watchman`: makes the watcher use [watchman](https://facebook.github.io/watchman/)
+* `dot`: enables watching files/directories that start with a dot.
 
 For the glob pattern documentation, see [minimatch](https://github.com/isaacs/minimatch).
 If you choose to use `watchman` you'll have to [install watchman yourself](https://facebook.github.io/watchman/docs/install.html)).

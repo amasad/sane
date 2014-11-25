@@ -116,7 +116,7 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
   var self = this;
   var absPath = path.join(this.root, changeDescriptor.name);
 
-  if (!common.isFileIncluded(this.globs, changeDescriptor.name)) {
+  if (!common.isFileIncluded(this.globs, this.dot, changeDescriptor.name)) {
     return;
   }
 
