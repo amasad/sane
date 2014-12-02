@@ -116,7 +116,7 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
   var self = this;
   var absPath = path.join(this.root, changeDescriptor.name);
 
-  if (!common.isFileIncluded(this.globs, changeDescriptor.name)) {
+  if (!common.isFileIncluded(this.globs, this.dot, changeDescriptor.name)) {
     return;
   }
 
@@ -229,16 +229,17 @@ var watchmanInstalled;
 function checkIfWatchmanInstalled() {
   if (watchmanInstalled == null) {
     exec('which watchman', function(err, out) {
-    if (err || out.length === 0) {
-      console.warn(
-        '\u001b[31mIt doesn\'t look like you have `watchman` installed',
-        '\u001b[39m\nSee https://facebook.github.io/watchman/docs/install.html'
-      );
-      process.exit(1);
-    } else {
-      watchmanInstalled = true;
-    }
-  });
+      if (err || out.length === 0) {
+        console.warn(
+          '\u001b[31mIt doesn\'t look like you have `watchman` installed',
+          '\u001b[39m\nSee',
+          'https://facebook.github.io/watchman/docs/install.html'
+        );
+        process.exit(1);
+      } else {
+        watchmanInstalled = true;
+      }
+    });
   } else {
     return true;
   }

@@ -72,7 +72,7 @@ NodeWatcher.prototype.__proto__ = EventEmitter.prototype;
 
 NodeWatcher.prototype.register = function(filepath) {
   var relativePath = path.relative(this.root, filepath);
-  if (!common.isFileIncluded(this.globs, relativePath)) {
+  if (!common.isFileIncluded(this.globs, this.dot, relativePath)) {
     return false;
   }
 
