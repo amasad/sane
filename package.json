@@ -8,8 +8,8 @@
     "url": "https://github.com/amasad/sane"
   },
   "scripts": {
-    "prepublish": "node_modules/.bin/jshint --config=.jshintrc src/ index.js && mocha --bail",
-    "test": "node_modules/.bin/jshint --config=.jshintrc src/ index.js && mocha --bail"
+    "prepublish": "jshint --config=.jshintrc src/ index.js && mocha --bail",
+    "test": "jshint --config=.jshintrc src/ index.js && mocha --bail"
   },
   "keywords": [
     "watch",
