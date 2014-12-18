@@ -1,6 +1,6 @@
 {
   "name": "sane",
-  "version": "1.0.0-rc1",
+  "version": "1.0.0",
   "description": "Sane aims to be fast, small, and reliable file system watcher.",
   "main": "index.js",
   "repository": {
