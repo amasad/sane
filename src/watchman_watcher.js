@@ -36,12 +36,8 @@ module.exports = WatchmanWatcher;
 
 function WatchmanWatcher(dir, opts) {
   opts = common.assignOptions(this, opts);
-
   checkIfWatchmanInstalled();
   this.root = path.resolve(dir);
-  this.client = new watchman.Client();
-  this.client.on('error', this.emit.bind(this));
-  this.client.on('subscription', this.handleChangeEvent.bind(this));
   this.init();
 }
 
@@ -54,7 +50,18 @@ WatchmanWatcher.prototype.__proto__ = EventEmitter.prototype;
  */
 
 WatchmanWatcher.prototype.init = function() {
+  if (this.client) {
+    this.client.removeAllListeners();
+  }
+
   var self = this;
+  this.client = new watchman.Client();
+  this.client.on('error', this.emit.bind(this));
+  this.client.on('subscription', this.handleChangeEvent.bind(this));
+  this.client.on('end', function() {
+    console.warn('[sane] Warning: Lost connection to watchman, reconnecting..');
+    self.init();
+  });
 
   function onWatch(error, resp) {
     if (handleError(self, error)) {
@@ -178,6 +185,7 @@ WatchmanWatcher.prototype.close = function(callback) {
 
     handleWarning(resp);
 
+    self.client.removeAllListeners();
     self.client.end();
 
     callback && callback(null, true);
