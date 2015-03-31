@@ -210,7 +210,7 @@ NodeWatcher.prototype.detectChangedFile = function(dir, event, callback) {
   var closest = {mtime: 0};
   var c = 0;
   Object.keys(this.dirRegistery[dir]).forEach(function(file, i, arr) {
-    fs.stat(path.join(dir, file), function(error, stat) {
+    fs.lstat(path.join(dir, file), function(error, stat) {
       if (found) {
         return;
       }
@@ -269,7 +269,7 @@ NodeWatcher.prototype.normalizeChange = function(dir, event, file) {
 NodeWatcher.prototype.processChange = function(dir, event, file) {
   var fullPath = path.join(dir, file);
   var relativePath = path.join(path.relative(this.root, dir), file);
-  fs.stat(fullPath, function(error, stat) {
+  fs.lstat(fullPath, function(error, stat) {
     if (error && error.code !== 'ENOENT') {
       this.emit('error', error);
     } else if (!error && stat.isDirectory()) {
