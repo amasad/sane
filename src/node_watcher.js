@@ -203,7 +203,7 @@ NodeWatcher.prototype.close = function(callback) {
 
 NodeWatcher.prototype.detectChangedFile = function(dir, event, callback) {
   if (!this.dirRegistery[dir]) {
-    throw new Error('Unable to find directory in registery: ' + dir);
+    return;
   }
 
   var found = false;
