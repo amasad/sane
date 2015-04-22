@@ -11,6 +11,7 @@
     "prepublish": "jshint --config=.jshintrc src/ index.js && mocha --bail",
     "test": "jshint --config=.jshintrc src/ index.js && mocha --bail"
   },
+  "bin": "./src/cli.js",
   "keywords": [
     "watch",
     "file",
@@ -22,8 +23,10 @@
   "author": "amasad",
   "license": "MIT",
   "dependencies": {
+    "exec-sh": "^0.2.0",
     "fb-watchman": "0.0.0",
     "minimatch": "~0.2.14",
+    "minimist": "^1.1.1",
     "walker": "~1.0.5",
     "watch": "~0.10.0"
   },
