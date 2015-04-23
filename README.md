@@ -120,3 +120,6 @@ It will watch the given `directory` and run the given <command> every time a fil
 ## License
 
 MIT
+
+## Credits
+The CLI was originally based on the [watch CLI](https://github.com/mikeal/watch). Watch is licensed under the Apache License Version 2.0.
