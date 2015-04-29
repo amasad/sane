@@ -87,8 +87,7 @@ WatchmanWatcher.prototype.init = function() {
   }
 
   function onSubscribe(error, resp) {
-    if (error) {
-      self.emit('error', error);
+    if (handleError(self, error)) {
       return;
     }
 
@@ -97,7 +96,24 @@ WatchmanWatcher.prototype.init = function() {
     self.emit('ready');
   }
 
-  self.client.command(['watch', self.root], onWatch);
+  function onVersion(error, resp) {
+    if (handleError(self, error)) {
+      return;
+    }
+
+    var command;
+    var parts = resp.version.split('.');
+
+    if (parseInt(parts[0], 10) >= 3 && parseInt(parts[1], 10) >= 1) {
+      command = 'watch-project';
+    } else {
+      command = 'watch';
+    }
+
+    self.client.command([command, self.root], onWatch);
+  }
+
+  self.client.command(['version'], onVersion);
 };
 
 /**
