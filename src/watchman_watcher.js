@@ -63,6 +63,46 @@ WatchmanWatcher.prototype.init = function() {
     self.init();
   });
 
+  this.watchProjectInfo = null;
+
+  function getWatchRoot() {
+    return self.watchProjectInfo ? self.watchProjectInfo.root : self.root;
+  }
+
+  function onVersion(error, resp) {
+    if (handleError(self, error)) {
+      return;
+    }
+
+    handleWarning(resp);
+
+    var parts = resp.version.split('.');
+
+    if (parseInt(parts[0], 10) >= 3 && parseInt(parts[1], 10) >= 1) {
+      self.client.command(
+        ['watch-project', getWatchRoot()], onWatchProject
+      );
+    } else {
+      self.client.command(['watch', getWatchRoot()], onWatch);
+    }
+  }
+
+  function onWatchProject(error, resp) {
+    if (handleError(self, error)) {
+      return;
+    }
+
+    handleWarning(resp);
+
+    self.watchProjectInfo = {
+      root: resp.watch,
+      relativePath: resp.relative_path ? resp.relative_path : ''
+    };
+
+    self.client.command(['clock', getWatchRoot()], onClock);
+  }
+
+
   function onWatch(error, resp) {
     if (handleError(self, error)) {
       return;
@@ -70,7 +110,7 @@ WatchmanWatcher.prototype.init = function() {
 
     handleWarning(resp);
 
-    self.client.command(['clock', self.root], onClock);
+    self.client.command(['clock', getWatchRoot()], onClock);
   }
 
   function onClock(error, resp) {
@@ -80,10 +120,22 @@ WatchmanWatcher.prototype.init = function() {
 
     handleWarning(resp);
 
-    self.client.command(['subscribe', self.root, SUB_NAME, {
+    var options = {
       fields: ['name', 'exists', 'new'],
       since: resp.clock
-    }], onSubscribe);
+    };
+
+    if (self.watchProjectInfo != null) {
+      options.expression = [
+        'dirname',
+        self.watchProjectInfo.relativePath
+      ];
+    }
+
+    self.client.command(
+      ['subscribe', getWatchRoot(), SUB_NAME, options],
+      onSubscribe
+    );
   }
 
   function onSubscribe(error, resp) {
@@ -94,23 +146,6 @@ WatchmanWatcher.prototype.init = function() {
     handleWarning(resp);
 
     self.emit('ready');
-  }
-
-  function onVersion(error, resp) {
-    if (handleError(self, error)) {
-      return;
-    }
-
-    var command;
-    var parts = resp.version.split('.');
-
-    if (parseInt(parts[0], 10) >= 3 && parseInt(parts[1], 10) >= 1) {
-      command = 'watch-project';
-    } else {
-      command = 'watch';
-    }
-
-    self.client.command([command, self.root], onWatch);
   }
 
   self.client.command(['version'], onVersion);
@@ -137,7 +172,16 @@ WatchmanWatcher.prototype.handleChangeEvent = function(resp) {
 
 WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
   var self = this;
-  var absPath = path.join(this.root, changeDescriptor.name);
+  var absPath;
+
+  if (this.watchProjectInfo && this.watchProjectInfo.relativePath.length) {
+    absPath = path.join(
+      this.watchProjectInfo.root,
+      changeDescriptor.name
+    );
+  } else {
+    absPath = path.join(this.root, changeDescriptor.name);
+  }
 
   if (!common.isFileIncluded(this.globs, this.dot, changeDescriptor.name)) {
     return;
