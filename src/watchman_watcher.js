@@ -183,12 +183,13 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
     absPath = path.join(this.root, changeDescriptor.name);
   }
 
-  if (!common.isFileIncluded(this.globs, this.dot, changeDescriptor.name)) {
+  var relativePath = path.relative(this.root, absPath);
+  if (!common.isFileIncluded(this.globs, this.dot, relativePath)) {
     return;
   }
 
   if (!changeDescriptor.exists) {
-    self.emitEvent(DELETE_EVENT, changeDescriptor.name, self.root);
+    self.emitEvent(DELETE_EVENT, relativePath, self.root);
   } else {
     fs.lstat(absPath, function(error, stat) {
       if (handleError(self, error)) {
@@ -199,7 +200,7 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
 
       // Change event on dirs are mostly useless.
       if (!(eventType === CHANGE_EVENT && stat.isDirectory())) {
-        self.emitEvent(eventType, changeDescriptor.name, self.root, stat);
+        self.emitEvent(eventType, relativePath, self.root, stat);
       }
     });
   }
