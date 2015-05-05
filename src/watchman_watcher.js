@@ -192,6 +192,12 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
     self.emitEvent(DELETE_EVENT, relativePath, self.root);
   } else {
     fs.lstat(absPath, function(error, stat) {
+      // Files can be deleted between the event and the lstat call
+      // the most reliable thing to do here is to ignore the event.
+      if (error && error.code === 'ENOENT') {
+        return;
+      }
+
       if (handleError(self, error)) {
         return;
       }
