@@ -184,7 +184,7 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
   }
 
   var relativePath = path.relative(this.root, absPath);
-  if (!common.isFileIncluded(this.globs, this.dot, relativePath)) {
+  if (!common.isFileIncluded(this.globs, this.dot, this.ignore, relativePath)) {
     return;
   }
 
