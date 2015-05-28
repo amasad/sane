@@ -4,6 +4,7 @@ var fs = require('fs');
 var path = require('path');
 var walker = require('walker');
 var common = require('./common');
+var minimatch = require('minimatch');
 var platform = require('os').platform();
 var EventEmitter = require('events').EventEmitter;
 
@@ -335,8 +336,7 @@ function recReaddir(dir, ignore, dirCallback, fileCallback, endCallback) {
 
     dirWalker = dirWalker.filterDir(function (dir) {
       for (var i = 0, l = ignore.length; i < l; i++) {
-        var regex = new RegExp(ignore[i]);
-        if (regex.test(dir)) {
+        if (minimatch(dir, ignore[i])) {
           return false;
         }
         return true;
