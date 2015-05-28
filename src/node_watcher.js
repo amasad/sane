@@ -45,6 +45,7 @@ function NodeWatcher(dir, opts) {
   this.watchdir(this.root);
   recReaddir(
     this.root,
+    opts.ignore,
     this.watchdir,
     this.register,
     this.emit.bind(this, 'ready')
@@ -324,8 +325,26 @@ NodeWatcher.prototype.emitEvent = function(type, file, stat) {
  * @private
  */
 
-function recReaddir(dir, dirCallback, fileCallback, endCallback) {
-  walker(dir)
+function recReaddir(dir, ignore, dirCallback, fileCallback, endCallback) {
+  var dirWalker = walker(dir);
+
+  if (ignore) {
+    if (!Array.isArray(ignore)) {
+      ignore = [ignore];
+    }
+
+    dirWalker = dirWalker.filterDir(function (dir) {
+      for (var i = 0, l = ignore.length; i < l; i++) {
+        var regex = new RegExp(ignore[i]);
+        if (regex.test(dir)) {
+          return false;
+        }
+        return true;
+      }
+    });
+  }
+
+  dirWalker
     .on('dir', normalizeProxy(dirCallback))
     .on('file', normalizeProxy(fileCallback))
     .on('end', function() {
