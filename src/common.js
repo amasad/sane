@@ -24,9 +24,13 @@ exports.ALL_EVENT = 'all';
 exports.assignOptions = function(watcher, opts) {
   opts = opts || {};
   watcher.globs = opts.glob || [];
+  watcher.ignore = opts.ignore || [];
   watcher.dot = opts.dot || false;
   if (!Array.isArray(watcher.globs)) {
     watcher.globs = [watcher.globs];
+  }
+  if (!Array.isArray(watcher.ignore)) {
+    watcher.ignore = [watcher.ignore];
   }
   return opts;
 };
@@ -40,10 +44,19 @@ exports.assignOptions = function(watcher, opts) {
  * @public
  */
 
-exports.isFileIncluded = function(globs, dot, relativePath) {
-  var matched;
+exports.isFileIncluded = function(globs, dot, ignore, relativePath) {
+  var matched = false;
+  var i;
+  var l;
+  if (ignore.length) {
+    for (i = 0, l = ignore.length; i < l; i++) {
+      if (minimatch(relativePath, ignore[i])) {
+        return false;
+      }
+    }
+  }
   if (globs.length) {
-    for (var i = 0; i < globs.length; i++) {
+    for (i = 0, l = globs.length; i < l; i++) {
       if (minimatch(relativePath, globs[i], {dot: dot})) {
         matched = true;
         break;

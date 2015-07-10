@@ -4,6 +4,8 @@ var fs = require('fs');
 var path = require('path');
 var walker = require('walker');
 var common = require('./common');
+var minimatch = require('minimatch');
+var path = require('path');
 var platform = require('os').platform();
 var EventEmitter = require('events').EventEmitter;
 
@@ -45,6 +47,7 @@ function NodeWatcher(dir, opts) {
   this.watchdir(this.root);
   recReaddir(
     this.root,
+    this.ignore,
     this.watchdir,
     this.register,
     this.emit.bind(this, 'ready')
@@ -72,7 +75,7 @@ NodeWatcher.prototype.__proto__ = EventEmitter.prototype;
 
 NodeWatcher.prototype.register = function(filepath) {
   var relativePath = path.relative(this.root, filepath);
-  if (!common.isFileIncluded(this.globs, this.dot, relativePath)) {
+  if (!common.isFileIncluded(this.globs, this.dot, this.ignore, relativePath)) {
     return false;
   }
 
@@ -324,8 +327,16 @@ NodeWatcher.prototype.emitEvent = function(type, file, stat) {
  * @private
  */
 
-function recReaddir(dir, dirCallback, fileCallback, endCallback) {
+function recReaddir(dir, ignore, dirCallback, fileCallback, endCallback) {
   walker(dir)
+    .filterDir(function (subdir) {
+      for (var i = 0, l = ignore.length; i < l; i++) {
+        if (minimatch(path.relative(process.cwd(), subdir), ignore[i])) {
+          return false;
+        }
+        return true;
+      }
+    })
     .on('dir', normalizeProxy(dirCallback))
     .on('file', normalizeProxy(fileCallback))
     .on('end', function() {
