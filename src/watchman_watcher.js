@@ -56,7 +56,7 @@ WatchmanWatcher.prototype.init = function() {
 
   var self = this;
   this.client = new watchman.Client();
-  this.client.on('error', this.emit.bind(this));
+  this.client.on('error', this.emit.bind(this, 'error'));
   this.client.on('subscription', this.handleChangeEvent.bind(this));
   this.client.on('end', function() {
     console.warn('[sane] Warning: Lost connection to watchman, reconnecting..');
