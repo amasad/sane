@@ -4,11 +4,10 @@ var sane = require('../');
 var rimraf = require('rimraf');
 var path = require('path');
 var assert = require('assert');
+var tmp = require('tmp');
 
-var tmpdir = os.tmpdir();
+tmp.setGracefulCleanup();
 var jo = path.join.bind(path);
-var testdir = jo(tmpdir, 'sane_test');
-
 
 describe('sane in polling mode', function() {
   harness.call(this, {poll: true});
@@ -18,6 +17,9 @@ describe('sane in normal mode', function() {
 });
 describe('sane in watchman mode', function() {
   harness.call(this, {watchman: true})
+});
+describe('sane in watchman mode with offset project', function() {
+  harness.call(this, {watchman: true, offset: true})
 });
 
 function getWatcherClass(mode) {
@@ -32,11 +34,32 @@ function getWatcherClass(mode) {
 
 function harness(mode) {
   if (mode.poll) this.timeout(5000);
-  before(function() {
-    rimraf.sync(testdir);
+  var global_testdir = null;
+  var testdir = null;
+  after(function() {
+    if (global_testdir) {
       try {
+        rimraf.sync(global_testdir.name);
+      } catch (e) {}
+    }
+  });
+  before(function() {
+    global_testdir = tmp.dirSync({
+      prefix: 'sane-test',
+      unsafeCleanup: true
+    });
+    testdir = fs.realpathSync(global_testdir.name);
+
+    // Some Watchman deployments are restricted to watching
+    // project roots.  Let's fake one
+    fs.mkdirSync(jo(testdir, '.git'));
+
+    // If testing watchman watch-project in offset mode, create an offset dir
+    if (mode.offset) {
+      testdir = jo(testdir, 'offset');
       fs.mkdirSync(testdir);
-    } catch (e) {}
+    }
+
     for (var i = 0; i < 10; i++) {
       fs.writeFileSync(jo(testdir, 'file_' + i), 'test_' + i);
       var subdir = jo(testdir, 'sub_' + i);
@@ -61,10 +84,16 @@ function harness(mode) {
 
     it('emits a ready event', function(done) {
       this.watcher.on('ready', done);
+      this.watcher.on('error', function(error) {
+        done(error);
+      });
     });
 
     it('change emits event', function(done) {
       var testfile = jo(testdir, 'file_1');
+      this.watcher.on('error', function(error) {
+        done(error);
+      });
       this.watcher.on('change', function(filepath, dir, stat) {
         assert(stat instanceof fs.Stats);
         assert.equal(filepath, path.relative(testdir, testfile));
