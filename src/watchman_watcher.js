@@ -2,7 +2,6 @@
 
 var fs = require('fs');
 var path = require('path');
-var exec = require('child_process').exec;
 var assert = require('assert');
 var common = require('./common');
 var watchman = require('fb-watchman');
@@ -36,7 +35,6 @@ module.exports = WatchmanWatcher;
 
 function WatchmanWatcher(dir, opts) {
   opts = common.assignOptions(this, opts);
-  checkIfWatchmanInstalled();
   this.root = path.resolve(dir);
   this.init();
 }
@@ -56,7 +54,9 @@ WatchmanWatcher.prototype.init = function() {
 
   var self = this;
   this.client = new watchman.Client();
-  this.client.on('error', this.emit.bind(this));
+  this.client.on('error', function(error) {
+    self.emit('error', error);
+  });
   this.client.on('subscription', this.handleChangeEvent.bind(this));
   this.client.on('end', function() {
     console.warn('[sane] Warning: Lost connection to watchman, reconnecting..');
@@ -69,16 +69,18 @@ WatchmanWatcher.prototype.init = function() {
     return self.watchProjectInfo ? self.watchProjectInfo.root : self.root;
   }
 
-  function onVersion(error, resp) {
+  function onCapability(error, resp) {
     if (handleError(self, error)) {
+      // The Watchman watcher is unusable on this system, we cannot continue
+      process.exit(1);
       return;
     }
 
     handleWarning(resp);
 
-    var parts = resp.version.split('.');
+    self.capabilities = resp.capabilities;
 
-    if (parseInt(parts[0], 10) >= 3 && parseInt(parts[1], 10) >= 1) {
+    if (self.capabilities.relative_root) {
       self.client.command(
         ['watch-project', getWatchRoot()], onWatchProject
       );
@@ -125,11 +127,31 @@ WatchmanWatcher.prototype.init = function() {
       since: resp.clock
     };
 
-    if (self.watchProjectInfo != null) {
-      options.expression = [
-        'dirname',
-        self.watchProjectInfo.relativePath
-      ];
+    // If the server has the wildmatch capability available it supports
+    // the recursive **/*.foo style match and we can offload our globs
+    // to the watchman server.  This saves both on data size to be
+    // communicated back to us and compute for evaluating the globs
+    // in our node process.
+    if (self.capabilities.wildmatch) {
+      if (self.globs.length === 0) {
+        if (!self.dot) {
+          // Make sure we honor the dot option if even we're not using globs.
+          options.expression = ['match', '*', 'basename', {
+            includedotfiles: false
+          }];
+        }
+      } else {
+        options.expression = ['anyof'];
+        for (var i in self.globs) {
+          options.expression.push(['match', self.globs[i], 'wholename', {
+            includedotfiles: self.dot
+          }]);
+        }
+      }
+    }
+
+    if (self.capabilities.relative_root) {
+      options.relative_root = self.watchProjectInfo.relativePath;
     }
 
     self.client.command(
@@ -148,7 +170,10 @@ WatchmanWatcher.prototype.init = function() {
     self.emit('ready');
   }
 
-  self.client.command(['version'], onVersion);
+  self.client.capabilityCheck({
+      optional:['wildmatch', 'relative_root']
+    },
+    onCapability);
 };
 
 /**
@@ -173,18 +198,19 @@ WatchmanWatcher.prototype.handleChangeEvent = function(resp) {
 WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
   var self = this;
   var absPath;
+  var relativePath;
 
-  if (this.watchProjectInfo && this.watchProjectInfo.relativePath.length) {
-    absPath = path.join(
-      this.watchProjectInfo.root,
-      changeDescriptor.name
-    );
+  if (this.capabilities.relative_root) {
+    relativePath = changeDescriptor.name;
+    absPath = path.join(this.watchProjectInfo.root,
+                        this.watchProjectInfo.relativePath, relativePath);
   } else {
     absPath = path.join(this.root, changeDescriptor.name);
+    relativePath = changeDescriptor.name;
   }
 
-  var relativePath = path.relative(this.root, absPath);
-  if (!common.isFileIncluded(this.globs, this.dot, relativePath)) {
+  if (!self.capabilities.wildmatch &&
+      !common.isFileIncluded(this.globs, this.dot, relativePath)) {
     return;
   }
 
@@ -240,25 +266,9 @@ WatchmanWatcher.prototype.emitEvent = function(
  */
 
 WatchmanWatcher.prototype.close = function(callback) {
-  var self = this;
-
-  function onUnsubscribe(error, resp) {
-    if (error && callback) {
-      callback(error);
-      return;
-    } else if (handleError(self, error)) {
-      return;
-    }
-
-    handleWarning(resp);
-
-    self.client.removeAllListeners();
-    self.client.end();
-
-    callback && callback(null, true);
-  }
-
-  self.client.command(['unsubscribe', self.root, SUB_NAME], onUnsubscribe);
+  this.client.removeAllListeners();
+  this.client.end();
+  callback && callback(null, true);
 };
 
 /**
@@ -271,6 +281,7 @@ WatchmanWatcher.prototype.close = function(callback) {
 
 function handleError(self, error) {
   if (error != null) {
+    console.log('[sane] Watchman: ' + error.message);
     self.emit('error', error);
     return true;
   } else {
@@ -291,31 +302,5 @@ function handleWarning(resp) {
     return true;
   } else {
     return false;
-  }
-}
-
-/**
- * Checks if watchman is installed
- *
- * @private
- */
-
-var watchmanInstalled;
-function checkIfWatchmanInstalled() {
-  if (watchmanInstalled == null) {
-    exec('which watchman', function(err, out) {
-      if (err || out.length === 0) {
-        console.warn(
-          '\u001b[31mIt doesn\'t look like you have `watchman` installed',
-          '\u001b[39m\nSee',
-          'https://facebook.github.io/watchman/docs/install.html'
-        );
-        process.exit(1);
-      } else {
-        watchmanInstalled = true;
-      }
-    });
-  } else {
-    return true;
   }
 }
