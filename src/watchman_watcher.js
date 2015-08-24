@@ -72,7 +72,6 @@ WatchmanWatcher.prototype.init = function() {
   function onCapability(error, resp) {
     if (handleError(self, error)) {
       // The Watchman watcher is unusable on this system, we cannot continue
-      process.exit(1);
       return;
     }
 
@@ -202,8 +201,11 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
 
   if (this.capabilities.relative_root) {
     relativePath = changeDescriptor.name;
-    absPath = path.join(this.watchProjectInfo.root,
-                        this.watchProjectInfo.relativePath, relativePath);
+    absPath = path.join(
+      this.watchProjectInfo.root,
+      this.watchProjectInfo.relativePath,
+      relativePath
+    );
   } else {
     absPath = path.join(this.root, changeDescriptor.name);
     relativePath = changeDescriptor.name;
@@ -281,7 +283,6 @@ WatchmanWatcher.prototype.close = function(callback) {
 
 function handleError(self, error) {
   if (error != null) {
-    console.log('[sane] Watchman: ' + error.message);
     self.emit('error', error);
     return true;
   } else {
