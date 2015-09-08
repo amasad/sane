@@ -5,7 +5,10 @@ var PollWatcher = require('./src/poll_watcher');
 var WatchmanWatcher = require('./src/watchman_watcher');
 
 function sane(dir, options) {
-  if (options.poll) {
+  if (options.watcher) {
+    var WatcherClass = require(options.watcher);
+    return new WatcherClass(dir, options);
+  } else if (options.poll) {
     return new PollWatcher(dir, options);
   } else if (options.watchman) {
     return new WatchmanWatcher(dir, options);
