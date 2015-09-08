@@ -72,6 +72,27 @@ function harness(mode) {
     }
   });
 
+  describe('sane plugin', function () {
+    beforeEach(function () {
+      this.watcher = sane(testdir, {
+        glob: '**/file_1',
+        watcher: './test/plugin_watcher',
+      });
+    });
+
+    afterEach(function (done) {
+      this.watcher.close(done);
+    });
+
+    it('uses the custom plugin watcher', function (done) {
+      this.watcher.on('is-test-plugin', function () {
+        done();
+      });
+    });
+
+  });
+
+
   describe('sane(file)', function() {
     beforeEach(function () {
       var Watcher = getWatcherClass(mode);
