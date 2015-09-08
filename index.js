@@ -6,12 +6,8 @@ var WatchmanWatcher = require('./src/watchman_watcher');
 
 function sane(dir, options) {
   if (options.watcher) {
-    if (typeof(options.watcher) === 'string') {
-      var WatcherClass = require(options.watcher);
-      return new WatcherClass(dir, options);
-    } else {
-      return options.watcher;
-    }
+    var WatcherClass = require(options.watcher);
+    return new WatcherClass(dir, options);
   } else if (options.poll) {
     return new PollWatcher(dir, options);
   } else if (options.watchman) {
