@@ -270,16 +270,16 @@ NodeWatcher.prototype.processChange = function(dir, event, file) {
   var fullPath = path.join(dir, file);
   var relativePath = path.join(path.relative(this.root, dir), file);
   fs.lstat(fullPath, function(error, stat) {
+    var registered = this.registered(fullPath);
     if (error && error.code !== 'ENOENT') {
       this.emit('error', error);
     } else if (!error && stat.isDirectory()) {
       // win32 emits usless change events on dirs.
-      if (event !== 'change') {
+      if (event !== 'change' && registered) {
         this.watchdir(fullPath);
         this.emitEvent(ADD_EVENT, relativePath, stat);
       }
     } else {
-      var registered = this.registered(fullPath);
       if (error && error.code === 'ENOENT') {
         this.unregister(fullPath);
         this.stopWatching(fullPath);
