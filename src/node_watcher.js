@@ -275,9 +275,11 @@ NodeWatcher.prototype.processChange = function(dir, event, file) {
       this.emit('error', error);
     } else if (!error && stat.isDirectory()) {
       // win32 emits usless change events on dirs.
-      if (event !== 'change' && registered) {
+      if (event !== 'change') {
         this.watchdir(fullPath);
-        this.emitEvent(ADD_EVENT, relativePath, stat);
+        if (common.isFileIncluded(this.globs, this.dot, relativePath)) {
+          this.emitEvent(ADD_EVENT, relativePath, stat);
+        }
       }
     } else {
       if (error && error.code === 'ENOENT') {
