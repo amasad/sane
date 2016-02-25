@@ -9,6 +9,7 @@ var EventEmitter = require('events').EventEmitter;
 
 /**
  * Constants
+ * @private
  */
 
 var DEFAULT_DELAY = common.DEFAULT_DELAY;
@@ -19,6 +20,7 @@ var ALL_EVENT = common.ALL_EVENT;
 
 /**
  * Export `NodeWatcher` class.
+ * @private
  */
 
 module.exports = NodeWatcher;
