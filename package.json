@@ -9,7 +9,8 @@
   },
   "scripts": {
     "prepublish": "jshint --config=.jshintrc src/ index.js && mocha --bail",
-    "test": "jshint --config=.jshintrc src/ index.js && mocha --bail"
+    "test": "jshint --config=.jshintrc src/ index.js && mocha --bail",
+    "test:debug": "mocha debug --bail"
   },
   "bin": "./src/cli.js",
   "keywords": [
