@@ -7,6 +7,10 @@
     "type": "git",
     "url": "https://github.com/amasad/sane"
   },
+  "files": [
+    "src",
+    "index.js"
+  ],
   "scripts": {
     "prepublish": "jshint --config=.jshintrc src/ index.js && mocha --bail",
     "test": "jshint --config=.jshintrc src/ index.js && mocha --bail",
