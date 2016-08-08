@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "prepublish": "jshint --config=.jshintrc src/ index.js && mocha --bail",
-    "test": "jshint --config=.jshintrc src/ index.js && mocha --bail",
+    "test": "jshint --config=.jshintrc src/ index.js && mocha --bail test/test.js && mocha --bail test/utils-test.js",
     "test:debug": "mocha debug --bail"
   },
   "bin": "./src/cli.js",
