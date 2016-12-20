@@ -215,7 +215,11 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
   }
 
   if (!self.capabilities.wildmatch &&
-      !common.isFileIncluded(this.globs, this.dot, relativePath)) {
+      !common.isFileIncluded(
+        this.globs,
+        this.dot,
+        this.doIgnore,
+        relativePath)) {
     return;
   }
 
