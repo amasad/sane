@@ -289,14 +289,14 @@ function harness(mode) {
       this.watcher.on('add', function(filepath, dir) {
         assert.equal(filepath, path.relative(testdir, testfile));
         assert.equal(dir, testdir);
+        done();
       });
       this.watcher.on('delete', function(filepath, dir) {
         assert.equal(filepath, path.relative(testdir, testfile));
         assert.equal(dir, testdir);
-        done();
       });
       this.watcher.on('ready', function() {
-        fs.unlink(testfile);
+        fs.unlinkSync(testfile);
         defer(function() {
           fs.writeFileSync(testfile, 'wow');
         });
