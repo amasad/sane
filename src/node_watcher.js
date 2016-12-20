@@ -72,7 +72,11 @@ NodeWatcher.prototype.__proto__ = EventEmitter.prototype;
 
 NodeWatcher.prototype.register = function(filepath) {
   var relativePath = path.relative(this.root, filepath);
-  if (!common.isFileIncluded(this.globs, this.dot, relativePath)) {
+  if (!common.isFileIncluded(
+    this.globs,
+    this.dot,
+    this.doIgnore,
+    relativePath)) {
     return false;
   }
 
@@ -276,7 +280,11 @@ NodeWatcher.prototype.processChange = function(dir, event, file) {
       // win32 emits usless change events on dirs.
       if (event !== 'change') {
         this.watchdir(fullPath);
-        if (common.isFileIncluded(this.globs, this.dot, relativePath)) {
+        if (common.isFileIncluded(
+          this.globs,
+          this.dot,
+          this.doIgnore,
+          relativePath)) {
           this.emitEvent(ADD_EVENT, relativePath, stat);
         }
       }

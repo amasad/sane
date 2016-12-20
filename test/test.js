@@ -418,6 +418,37 @@ function harness(mode) {
     });
   });
 
+  describe('sane(dir, ignored)', function() {
+    beforeEach(function () {
+      var Watcher = getWatcherClass(mode);
+      this.watcher = new Watcher(
+        testdir,
+        { ignored: ['**/file_3', /file_4/, function (file) {
+            return file.indexOf('file_5') !== -1;
+          }] });
+    });
+
+    afterEach(function(done) {
+      this.watcher.close(done);
+    });
+
+    it('ignores files', function (done) {
+      var i = 0;
+      this.watcher.on('change', function(filepath, dir) {
+        assert.ok(filepath.match(/file_(1|2)/), 'only file_1 and file_2');
+        assert.equal(dir, testdir);
+        if (++i == 2) done();
+      });
+      this.watcher.on('ready', function() {
+        fs.writeFileSync(jo(testdir, 'file_1'), 'wow');
+        fs.writeFileSync(jo(testdir, 'file_4'), 'wow');
+        fs.writeFileSync(jo(testdir, 'file_3'), 'wow');
+        fs.writeFileSync(jo(testdir, 'file_5'), 'wow');
+        fs.writeFileSync(jo(testdir, 'file_2'), 'wow');
+      });
+    });
+  });
+
   describe('sane shortcut alias', function () {
     beforeEach(function () {
       this.watcher = sane(testdir, {
