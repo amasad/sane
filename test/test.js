@@ -163,9 +163,13 @@ function harness(mode) {
         }
       });
       this.watcher.on('ready', function() {
-        fs.mkdirSync(jo(testdir, subdir1))
-        fs.mkdirSync(jo(testdir, subdir1, subdir2))
-        fs.writeFileSync(testfile, 'wow');
+        fs.mkdirSync(jo(testdir, subdir1));
+        defer(function() {
+          fs.mkdirSync(jo(testdir, subdir1, subdir2));
+          defer(function() {
+            fs.writeFileSync(testfile, 'wow');
+          });
+        });
       });
     });
 
