@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/amasad/sane.svg?style=svg)](https://circleci.com/gh/amasad/sane)
+
 sane
 ----
 
