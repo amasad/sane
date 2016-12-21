@@ -214,7 +214,7 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
     relativePath = changeDescriptor.name;
   }
 
-  if (!(self.capabilities.wildmatch && !this.hasIgnore) &&
+  if (!self.capabilities.wildmatch &&
       !common.isFileIncluded(
         this.globs,
         this.dot,
