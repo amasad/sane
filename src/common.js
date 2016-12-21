@@ -29,6 +29,8 @@ exports.assignOptions = function(watcher, opts) {
   if (!Array.isArray(watcher.globs)) {
     watcher.globs = [watcher.globs];
   }
+  watcher.hasIgnore = Boolean(opts.ignored) &&
+    !(Array.isArray(opts) && opts.length > 0);
   watcher.doIgnore = opts.ignored ? anymatch(opts.ignored) : function () {
     return false;
   };
@@ -48,6 +50,7 @@ exports.isFileIncluded = function(globs, dot, doIgnore, relativePath) {
   var matched;
   if (globs.length) {
     for (var i = 0; i < globs.length; i++) {
+      console.log(relativePath, !doIgnore(relativePath));
       if (minimatch(relativePath, globs[i], {dot: dot}) &&
         !doIgnore(relativePath)) {
         matched = true;
