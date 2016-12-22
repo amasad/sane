@@ -1,5 +1,6 @@
 'use strict';
 
+var anymatch = require('anymatch');
 var minimatch = require('minimatch');
 
 /**
@@ -28,6 +29,11 @@ exports.assignOptions = function(watcher, opts) {
   if (!Array.isArray(watcher.globs)) {
     watcher.globs = [watcher.globs];
   }
+  watcher.hasIgnore = Boolean(opts.ignored) &&
+    !(Array.isArray(opts) && opts.length > 0);
+  watcher.doIgnore = opts.ignored ? anymatch(opts.ignored) : function () {
+    return false;
+  };
   return opts;
 };
 
@@ -40,22 +46,20 @@ exports.assignOptions = function(watcher, opts) {
  * @public
  */
 
-exports.isFileIncluded = function(globs, dot, relativePath) {
+exports.isFileIncluded = function(globs, dot, doIgnore, relativePath) {
   var matched;
   if (globs.length) {
     for (var i = 0; i < globs.length; i++) {
-      if (minimatch(relativePath, globs[i], {dot: dot})) {
+      if (minimatch(relativePath, globs[i], {dot: dot}) &&
+        !doIgnore(relativePath)) {
         matched = true;
         break;
       }
     }
   } else {
     // Make sure we honor the dot option if even we're not using globs.
-    if (!dot) {
-      matched = minimatch(relativePath, '**/*', {dot: false});
-    } else {
-      matched = true;
-    }
+    matched = (dot || minimatch(relativePath, '**/*')) &&
+      !doIgnore(relativePath);
   }
   return matched;
 };
