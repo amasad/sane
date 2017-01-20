@@ -317,6 +317,11 @@ NodeWatcher.prototype.processChange = function(dir, event, file) {
 
 NodeWatcher.prototype.emitEvent = function(type, file, stat) {
   var key = type + '-' + file;
+  var addKey = ADD_EVENT + '-' + file;
+  if (type === CHANGE_EVENT && this.changeTimers[addKey]) {
+    type = ADD_EVENT;
+    key = addKey;
+  }
   clearTimeout(this.changeTimers[key]);
   this.changeTimers[key] = setTimeout(function() {
     delete this.changeTimers[key];
