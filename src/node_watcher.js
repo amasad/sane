@@ -73,10 +73,10 @@ NodeWatcher.prototype.__proto__ = EventEmitter.prototype;
 NodeWatcher.prototype.register = function(filepath) {
   var relativePath = path.relative(this.root, filepath);
   if (!common.isFileIncluded(
-    this.globs,
-    this.dot,
-    this.doIgnore,
-    relativePath)) {
+      this.globs,
+      this.dot,
+      this.doIgnore,
+      relativePath)) {
     return false;
   }
 
@@ -145,11 +145,18 @@ NodeWatcher.prototype.watchdir = function(dir) {
     return;
   }
 
-  var watcher = fs.watch(
-    dir,
-    { persistent: true },
-    this.normalizeChange.bind(this, dir)
-  );
+  var watcher;
+  try {
+    watcher = fs.watch(
+      dir,
+      { persistent: true },
+      this.normalizeChange.bind(this, dir));
+  } catch (err) {
+    if (err.code === 'ENOENT' || err.code === 'ENOTDIR') {
+      return;
+    }
+    throw err;
+  }
   this.watched[dir] = watcher;
 
   // Workaround Windows node issue #4337.
@@ -211,7 +218,7 @@ NodeWatcher.prototype.detectChangedFile = function(dir, event, callback) {
   }
 
   var found = false;
-  var closest = {mtime: 0};
+  var closest = { mtime: 0 };
   var c = 0;
   Object.keys(this.dirRegistery[dir]).forEach(function(file, i, arr) {
     fs.lstat(path.join(dir, file), function(error, stat) {
@@ -221,7 +228,7 @@ NodeWatcher.prototype.detectChangedFile = function(dir, event, callback) {
 
       if (error) {
         if (error.code === 'ENOENT' ||
-            (platform === 'win32' && error.code === 'EPERM')) {
+          (platform === 'win32' && error.code === 'EPERM')) {
           found = true;
           callback(file);
         } else {
@@ -281,10 +288,10 @@ NodeWatcher.prototype.processChange = function(dir, event, file) {
       if (event !== 'change') {
         this.watchdir(fullPath);
         if (common.isFileIncluded(
-          this.globs,
-          this.dot,
-          this.doIgnore,
-          relativePath)) {
+            this.globs,
+            this.dot,
+            this.doIgnore,
+            relativePath)) {
           this.emitEvent(ADD_EVENT, relativePath, stat);
         }
       }
