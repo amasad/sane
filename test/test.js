@@ -181,6 +181,9 @@ function harness(mode) {
         assert.equal(dir, testdir);
         done();
       });
+      this.watcher.on('change', function(filepath, dir, stat) {
+        done(new Error('Should not emit change on add'))
+      })
       this.watcher.on('ready', function() {
         fs.writeFileSync(testfile, 'wow');
       });
