@@ -452,6 +452,40 @@ function harness(mode) {
     });
   });
 
+  describe('sane(dir, ignored) - node_watcher directory ignore', function() {
+    beforeEach(function () {
+      var Watcher = getWatcherClass({}); // node_watcher only
+      this.watcher = new Watcher(
+        testdir,
+        { ignored: [/sub_0/, function (file) {
+          return file.indexOf('sub_1') !== -1;
+        }] });
+      this.watcher.doIgnore = function () { //overwrite standard ignore for test
+        return false;
+      };
+    });
+
+    afterEach(function(done) {
+      this.watcher.close(done);
+    });
+
+    it('ignores folders', function (done) {
+      var i = 0;
+      this.watcher.on('change', function(filepath, dir) {
+        assert.ok(!filepath.match(/sub_(0|1)/), 'Found changes in ignored subdir sub_0 and/or sub_1');
+        assert.equal(dir, testdir);
+        if (++i == 2) done();
+      });
+      this.watcher.on('ready', function() {
+        fs.writeFileSync(jo(testdir, 'sub_0', 'file_1'), 'wow');
+        fs.writeFileSync(jo(testdir, 'sub_1', 'file_1'), 'wow');
+        fs.writeFileSync(jo(testdir, 'sub_2', 'file_1'), 'wow');
+        fs.writeFileSync(jo(testdir, 'sub_3', 'file_1'), 'wow');
+        fs.writeFileSync(jo(testdir, 'sub_4', 'file_1'), 'wow');
+      });
+    });
+  });
+
   describe('sane shortcut alias', function () {
     beforeEach(function () {
       this.watcher = sane(testdir, {
