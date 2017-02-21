@@ -6,6 +6,7 @@ var walker = require('walker');
 var common = require('./common');
 var platform = require('os').platform();
 var EventEmitter = require('events').EventEmitter;
+var anymatch = require('anymatch');
 
 /**
  * Constants
@@ -27,7 +28,7 @@ module.exports = NodeWatcher;
  * Watches `dir`.
  *
  * @class NodeWatcher
- * @param String dir
+ * @param {String} dir
  * @param {Object} opts
  * @public
  */
@@ -47,7 +48,8 @@ function NodeWatcher(dir, opts) {
     this.root,
     this.watchdir,
     this.register,
-    this.emit.bind(this, 'ready')
+    this.emit.bind(this, 'ready'),
+    this.ignored
   );
 }
 
@@ -335,13 +337,18 @@ NodeWatcher.prototype.emitEvent = function(type, file, stat) {
  * Traverse a directory recursively calling `callback` on every directory.
  *
  * @param {string} dir
- * @param {function} callback
+ * @param {function} dirCallback
+ * @param {function} fileCallback
  * @param {function} endCallback
+ * @param {*} ignored
  * @private
  */
 
-function recReaddir(dir, dirCallback, fileCallback, endCallback) {
+function recReaddir(dir, dirCallback, fileCallback, endCallback, ignored) {
   walker(dir)
+    .filterDir(function(currentDir) {
+      return !anymatch(ignored, currentDir);
+    })
     .on('dir', normalizeProxy(dirCallback))
     .on('file', normalizeProxy(fileCallback))
     .on('end', function() {
