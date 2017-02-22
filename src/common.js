@@ -1,7 +1,7 @@
 'use strict';
 
 var anymatch = require('anymatch');
-var minimatch = require('minimatch');
+var micromatch = require('micromatch');
 
 /**
  * Constants
@@ -52,7 +52,7 @@ exports.isFileIncluded = function(globs, dot, doIgnore, relativePath) {
   var matched;
   if (globs.length) {
     for (var i = 0; i < globs.length; i++) {
-      if (minimatch(relativePath, globs[i], {dot: dot}) &&
+      if (micromatch.isMatch(relativePath, globs[i], {dot: dot}) &&
         !doIgnore(relativePath)) {
         matched = true;
         break;
@@ -60,7 +60,7 @@ exports.isFileIncluded = function(globs, dot, doIgnore, relativePath) {
     }
   } else {
     // Make sure we honor the dot option if even we're not using globs.
-    matched = (dot || minimatch(relativePath, '**/*')) &&
+    matched = (dot || micromatch.isMatch(relativePath, '**/*')) &&
       !doIgnore(relativePath);
   }
   return matched;
