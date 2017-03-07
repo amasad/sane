@@ -30,7 +30,7 @@
   "dependencies": {
     "anymatch": "^1.3.0",
     "exec-sh": "^0.2.0",
-    "fb-watchman": "^1.8.0",
+    "fb-watchman": "^2.0.0",
     "minimatch": "^3.0.2",
     "minimist": "^1.1.1",
     "walker": "~1.0.5",
