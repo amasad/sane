@@ -10,6 +10,7 @@ var RecrawlWarning = require('./utils/recrawl-warning-dedupe');
 
 /**
  * Constants
+ * @private
  */
 
 var CHANGE_EVENT = common.CHANGE_EVENT;
@@ -20,6 +21,7 @@ var SUB_NAME = 'sane-sub';
 
 /**
  * Export `WatchmanWatcher` class.
+ * @private
  */
 
 module.exports = WatchmanWatcher;
@@ -28,7 +30,7 @@ module.exports = WatchmanWatcher;
 /**
  * Watches `dir`.
  *
- * @class PollWatcher
+ * @class WatchmanWatcher
  * @param String dir
  * @param {Object} opts
  * @public
