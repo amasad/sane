@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/amasad/sane.svg?style=svg)](https://circleci.com/gh/amasad/sane)
+
 sane
 ----
 
@@ -50,9 +52,11 @@ options:
 * `poll`: puts the watcher in polling mode. Under the hood that means `fs.watchFile`.
 * `watchman`: makes the watcher use [watchman](https://facebook.github.io/watchman/).
 * `dot`: enables watching files/directories that start with a dot.
+* `ignored`: a glob, regex, function, or array of any combination.
 
 For the glob pattern documentation, see [minimatch](https://github.com/isaacs/minimatch).
 If you choose to use `watchman` you'll have to [install watchman yourself](https://facebook.github.io/watchman/docs/install.html)).
+For the ignored options, see [anymatch](https://github.com/es128/anymatch).
 
 ### sane.NodeWatcher(dir, options)
 

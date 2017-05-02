@@ -60,6 +60,7 @@ PollWatcher.prototype.filter = function(filepath, stat) {
   return stat.isDirectory() || common.isFileIncluded(
     this.globs,
     this.dot,
+    this.doIgnore,
     path.relative(this.root, filepath)
   );
 };

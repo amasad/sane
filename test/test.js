@@ -177,6 +177,9 @@ function harness(mode) {
         assert.equal(dir, testdir);
         done();
       });
+      this.watcher.on('change', function(filepath, dir, stat) {
+        done(new Error('Should not emit change on add'))
+      })
       this.watcher.on('ready', function() {
         fs.writeFileSync(testfile, 'wow');
       });
@@ -319,14 +322,14 @@ function harness(mode) {
       this.watcher.on('add', function(filepath, dir) {
         assert.equal(filepath, path.relative(testdir, testfile));
         assert.equal(dir, testdir);
+        done();
       });
       this.watcher.on('delete', function(filepath, dir) {
         assert.equal(filepath, path.relative(testdir, testfile));
         assert.equal(dir, testdir);
-        done();
       });
       this.watcher.on('ready', function() {
-        fs.unlink(testfile);
+        fs.unlinkSync(testfile);
         defer(function() {
           fs.writeFileSync(testfile, 'wow');
         });
@@ -410,6 +413,71 @@ function harness(mode) {
         fs.writeFileSync(jo(subdir, 'file'), 'wow');
         fs.writeFileSync(jo(subdir, '.file_3'), 'wow');
         fs.writeFileSync(jo(testdir, 'file_1'), 'wow');
+      });
+    });
+  });
+
+  describe('sane(dir, ignored)', function() {
+    beforeEach(function () {
+      var Watcher = getWatcherClass(mode);
+      this.watcher = new Watcher(
+        testdir,
+        { ignored: ['**/file_3', /file_4/, function (file) {
+            return file.indexOf('file_5') !== -1;
+          }] });
+    });
+
+    afterEach(function(done) {
+      this.watcher.close(done);
+    });
+
+    it('ignores files', function (done) {
+      var i = 0;
+      this.watcher.on('change', function(filepath, dir) {
+        assert.ok(filepath.match(/file_(1|2)/), 'only file_1 and file_2');
+        assert.equal(dir, testdir);
+        if (++i == 2) done();
+      });
+      this.watcher.on('ready', function() {
+        fs.writeFileSync(jo(testdir, 'file_1'), 'wow');
+        fs.writeFileSync(jo(testdir, 'file_4'), 'wow');
+        fs.writeFileSync(jo(testdir, 'file_3'), 'wow');
+        fs.writeFileSync(jo(testdir, 'file_5'), 'wow');
+        fs.writeFileSync(jo(testdir, 'file_2'), 'wow');
+      });
+    });
+  });
+
+  describe('sane(dir, ignored) - node_watcher directory ignore', function() {
+    beforeEach(function () {
+      var Watcher = getWatcherClass({}); // node_watcher only
+      this.watcher = new Watcher(
+        testdir,
+        { ignored: [/sub_0/, function (file) {
+          return file.indexOf('sub_1') !== -1;
+        }] });
+      this.watcher.doIgnore = function () { //overwrite standard ignore for test
+        return false;
+      };
+    });
+
+    afterEach(function(done) {
+      this.watcher.close(done);
+    });
+
+    it('ignores folders', function (done) {
+      var i = 0;
+      this.watcher.on('change', function(filepath, dir) {
+        assert.ok(!filepath.match(/sub_(0|1)/), 'Found changes in ignored subdir sub_0 and/or sub_1');
+        assert.equal(dir, testdir);
+        if (++i == 2) done();
+      });
+      this.watcher.on('ready', function() {
+        fs.writeFileSync(jo(testdir, 'sub_0', 'file_1'), 'wow');
+        fs.writeFileSync(jo(testdir, 'sub_1', 'file_1'), 'wow');
+        fs.writeFileSync(jo(testdir, 'sub_2', 'file_1'), 'wow');
+        fs.writeFileSync(jo(testdir, 'sub_3', 'file_1'), 'wow');
+        fs.writeFileSync(jo(testdir, 'sub_4', 'file_1'), 'wow');
       });
     });
   });

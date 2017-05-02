@@ -6,6 +6,7 @@ var walker = require('walker');
 var common = require('./common');
 var platform = require('os').platform();
 var EventEmitter = require('events').EventEmitter;
+var anymatch = require('anymatch');
 
 /**
  * Constants
@@ -27,7 +28,7 @@ module.exports = NodeWatcher;
  * Watches `dir`.
  *
  * @class NodeWatcher
- * @param String dir
+ * @param {String} dir
  * @param {Object} opts
  * @public
  */
@@ -47,7 +48,8 @@ function NodeWatcher(dir, opts) {
     this.root,
     this.watchdir,
     this.register,
-    this.emit.bind(this, 'ready')
+    this.emit.bind(this, 'ready'),
+    this.ignored
   );
 }
 
@@ -72,7 +74,11 @@ NodeWatcher.prototype.__proto__ = EventEmitter.prototype;
 
 NodeWatcher.prototype.register = function(filepath) {
   var relativePath = path.relative(this.root, filepath);
-  if (!common.isFileIncluded(this.globs, this.dot, relativePath)) {
+  if (!common.isFileIncluded(
+    this.globs,
+    this.dot,
+    this.doIgnore,
+    relativePath)) {
     return false;
   }
 
@@ -276,7 +282,11 @@ NodeWatcher.prototype.processChange = function(dir, event, file) {
       // win32 emits usless change events on dirs.
       if (event !== 'change') {
         this.watchdir(fullPath);
-        if (common.isFileIncluded(this.globs, this.dot, relativePath)) {
+        if (common.isFileIncluded(
+          this.globs,
+          this.dot,
+          this.doIgnore,
+          relativePath)) {
           this.emitEvent(ADD_EVENT, relativePath, stat);
         }
       }
@@ -309,6 +319,12 @@ NodeWatcher.prototype.processChange = function(dir, event, file) {
 
 NodeWatcher.prototype.emitEvent = function(type, file, stat) {
   var key = type + '-' + file;
+  var addKey = ADD_EVENT + '-' + file;
+  if (type === CHANGE_EVENT && this.changeTimers[addKey]) {
+    // Ignore the change event that is immediately fired after an add event.
+    // (This happens on Linux).
+    return;
+  }
   clearTimeout(this.changeTimers[key]);
   this.changeTimers[key] = setTimeout(function() {
     delete this.changeTimers[key];
@@ -321,13 +337,18 @@ NodeWatcher.prototype.emitEvent = function(type, file, stat) {
  * Traverse a directory recursively calling `callback` on every directory.
  *
  * @param {string} dir
- * @param {function} callback
+ * @param {function} dirCallback
+ * @param {function} fileCallback
  * @param {function} endCallback
+ * @param {*} ignored
  * @private
  */
 
-function recReaddir(dir, dirCallback, fileCallback, endCallback) {
+function recReaddir(dir, dirCallback, fileCallback, endCallback, ignored) {
   walker(dir)
+    .filterDir(function(currentDir) {
+      return !anymatch(ignored, currentDir);
+    })
     .on('dir', normalizeProxy(dirCallback))
     .on('file', normalizeProxy(fileCallback))
     .on('end', function() {
