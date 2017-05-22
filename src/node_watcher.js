@@ -328,9 +328,33 @@ NodeWatcher.prototype.emitEvent = function(type, file, stat) {
   clearTimeout(this.changeTimers[key]);
   this.changeTimers[key] = setTimeout(function() {
     delete this.changeTimers[key];
-    this.emit(type, file, this.root, stat);
-    this.emit(ALL_EVENT, type, file, this.root, stat);
+    if (type === ADD_EVENT && stat.isDirectory()) {
+      // Recursively emit add events and watch for sub-files/folders
+      recReaddir(
+        path.resolve(this.root, file),
+        function emitAddDir (dir, stats) {
+          this.watchdir(dir);
+          this.rawEmitEvent(ADD_EVENT, path.relative(this.root, dir), stats);
+        }.bind(this),
+        function emitAddFile (file, stats) {
+          this.register(file);
+          this.rawEmitEvent(ADD_EVENT, path.relative(this.root, file), stats);
+        }.bind(this),
+        function endCallback () {},
+        this.ignored
+      );
+    } else {
+      this.rawEmitEvent(type, file, stat);
+    }
   }.bind(this), DEFAULT_DELAY);
+};
+
+/**
+ * Actually emit the events
+ */
+NodeWatcher.prototype.rawEmitEvent = function (type, file, stat) {
+  this.emit(type, file, this.root, stat);
+  this.emit(ALL_EVENT, type, file, this.root, stat);
 };
 
 /**
@@ -370,7 +394,7 @@ function recReaddir(dir, dirCallback, fileCallback, endCallback, ignored) {
  */
 
 function normalizeProxy(callback) {
-  return function(filepath) {
-    return callback(path.normalize(filepath));
+  return function(filepath, stats) {
+    return callback(path.normalize(filepath), stats);
   };
 }
