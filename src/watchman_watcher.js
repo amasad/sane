@@ -2,7 +2,6 @@
 
 var fs = require('fs');
 var path = require('path');
-var assert = require('assert');
 var common = require('./common');
 var watchman = require('fb-watchman');
 var EventEmitter = require('events').EventEmitter;
@@ -17,6 +16,10 @@ var DELETE_EVENT = common.DELETE_EVENT;
 var ADD_EVENT = common.ADD_EVENT;
 var ALL_EVENT = common.ALL_EVENT;
 var SUB_NAME = 'sane-sub';
+var ID = 0;
+var client;
+var reconnecting = false;
+var WARNING = '[sane] Warning: Lost connection to watchman, reconnecting..';
 
 /**
  * Export `WatchmanWatcher` class.
@@ -35,8 +38,22 @@ module.exports = WatchmanWatcher;
  */
 
 function WatchmanWatcher(dir, opts) {
-  opts = common.assignOptions(this, opts);
+  common.assignOptions(this, opts);
+  this.id = ID++;
   this.root = path.resolve(dir);
+
+  var self = this;
+  this.onClientError = function(error) { self.emit('error', error); };
+  this.onHandleChangeEvent = this.handleChangeEvent.bind(this);
+  reconnecting = false;
+  this.onEnd = function() {
+    if (reconnecting === false) {
+      client = null;
+      console.warn(WARNING);
+      reconnecting = true;
+    }
+    self.init();
+  };
   this.init();
 }
 
@@ -48,21 +65,28 @@ WatchmanWatcher.prototype.__proto__ = EventEmitter.prototype;
  * @private
  */
 
-WatchmanWatcher.prototype.init = function() {
-  if (this.client) {
-    this.client.removeAllListeners();
+WatchmanWatcher.prototype._detachOwnWatchmanHandlers = function() {
+  if (this.client && this.client.off) {
+    this.client.off('error', this.onClientError);
+    this.client.off('subscription', this.onHandleChangeEvent);
+    this.client.off('end', this.onEnd);
   }
+};
+
+WatchmanWatcher.prototype.init = function() {
+  this._detachOwnWatchmanHandlers();
 
   var self = this;
-  this.client = new watchman.Client();
-  this.client.on('error', function(error) {
-    self.emit('error', error);
-  });
-  this.client.on('subscription', this.handleChangeEvent.bind(this));
-  this.client.on('end', function() {
-    console.warn('[sane] Warning: Lost connection to watchman, reconnecting..');
-    self.init();
-  });
+
+  if (!client) {
+    client = new watchman.Client();
+    client.setMaxListeners(100000);
+  }
+
+  this.client = client;
+  this.client.on('error', this.onClientError);
+  this.client.on('subscription', this.onHandleChangeEvent);
+  this.client.on('end', this.onEnd);
 
   this.watchProjectInfo = null;
 
@@ -155,7 +179,7 @@ WatchmanWatcher.prototype.init = function() {
     }
 
     self.client.command(
-      ['subscribe', getWatchRoot(), SUB_NAME, options],
+      ['subscribe', getWatchRoot(), SUB_NAME + self.id, options],
       onSubscribe
     );
   }
@@ -167,12 +191,13 @@ WatchmanWatcher.prototype.init = function() {
 
     handleWarning(resp);
 
+    reconnecting = false;
     self.emit('ready');
   }
 
   self.client.capabilityCheck({
-      optional:['wildmatch', 'relative_root']
-    },
+    optional:['wildmatch', 'relative_root']
+  },
     onCapability);
 };
 
@@ -184,7 +209,8 @@ WatchmanWatcher.prototype.init = function() {
  */
 
 WatchmanWatcher.prototype.handleChangeEvent = function(resp) {
-  assert.equal(resp.subscription, SUB_NAME, 'Invalid subscription event.');
+  if (resp.subscription !== SUB_NAME + this.id) { return; }
+
   if (Array.isArray(resp.files)) {
     resp.files.forEach(this.handleFileChange, this);
   }
@@ -275,7 +301,7 @@ WatchmanWatcher.prototype.emitEvent = function(
  */
 
 WatchmanWatcher.prototype.close = function(callback) {
-  this.client.removeAllListeners();
+  this._detachOwnWatchmanHandlers();
   this.client.end();
   callback && callback(null, true);
 };
