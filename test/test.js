@@ -14,8 +14,11 @@ var jo = path.join.bind(path);
 describe('sane in polling mode', function() {
   harness.call(this, { poll: true });
 });
-describe('sane in normal mode', function() {
+describe('sane in node mode', function() {
   harness.call(this, {});
+});
+describe.only('sane in fsevents mode', function() {
+  harness.call(this, { fsevents: true });
 });
 describe('sane in watchman mode', function() {
   harness.call(this, { watchman: true });
