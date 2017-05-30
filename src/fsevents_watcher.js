@@ -38,9 +38,11 @@ function FSEventsWatcher(dir, opts) {
 
   this.watcher
     .start()
+    .on('modified', this.emitEvent.bind(this, CHANGE_EVENT))
     .on('created', this.emitEvent.bind(this, ADD_EVENT))
-    .on('deleted', this.emitEvent.bind(this, DELETE_EVENT))
-    .on('modified', this.emitEvent.bind(this, CHANGE_EVENT));
+    .on('deleted', this.emitEvent.bind(this, DELETE_EVENT));
+
+  setTimeout(this.emit.bind(this, 'ready'));
 }
 
 FSEventsWatcher.prototype.__proto__ = EventEmitter.prototype;
@@ -89,9 +91,9 @@ FSEventsWatcher.prototype.emitEvent = function(type, file) {
   }
 
   function emit(stat) {
-    file = path.relative(this.root, file);
-    this.emit(type, file, this.root, stat);
-    this.emit(ALL_EVENT, type, file, this.root, stat);
+    file = path.relative(self.root, file);
+    self.emit(type, file, self.root, stat);
+    self.emit(ALL_EVENT, type, file, self.root, stat);
   }
 };
 

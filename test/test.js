@@ -32,6 +32,8 @@ function getWatcherClass(mode) {
     return sane.WatchmanWatcher;
   } else if (mode.poll) {
     return sane.PollWatcher;
+  } else if (mode.fsevents) {
+    return sane.FSEventsWatcher;
   } else {
     return sane.NodeWatcher;
   }
