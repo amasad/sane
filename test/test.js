@@ -17,7 +17,7 @@ describe('sane in polling mode', function() {
 describe('sane in node mode', function() {
   harness.call(this, {});
 });
-describe.only('sane in fsevents mode', function() {
+describe('sane in fsevents mode', function() {
   harness.call(this, { fsevents: true });
 });
 describe('sane in watchman mode', function() {
