@@ -39,8 +39,9 @@ function PollWatcher(dir, opts) {
 
   watch.createMonitor(
     this.root,
-    { interval: opts.interval || DEFAULT_DELAY,
-      filter: this.filter.bind(this)
+    {
+      interval: opts.interval || DEFAULT_DELAY,
+      filter: this.filter.bind(this),
     },
     this.init.bind(this)
   );
@@ -57,11 +58,14 @@ PollWatcher.prototype.__proto__ = EventEmitter.prototype;
  */
 
 PollWatcher.prototype.filter = function(filepath, stat) {
-  return stat.isDirectory() || common.isFileIncluded(
-    this.globs,
-    this.dot,
-    this.doIgnore,
-    path.relative(this.root, filepath)
+  return (
+    stat.isDirectory() ||
+    common.isFileIncluded(
+      this.globs,
+      this.dot,
+      this.doIgnore,
+      path.relative(this.root, filepath)
+    )
   );
 };
 

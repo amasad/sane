@@ -22,9 +22,13 @@ RecrawlWarning.findByRoot = function(root) {
 };
 
 RecrawlWarning.isRecrawlWarningDupe = function(warningMessage) {
-  if (typeof warningMessage !== 'string') { return false; }
+  if (typeof warningMessage !== 'string') {
+    return false;
+  }
   var match = warningMessage.match(REG);
-  if (!match) { return false; }
+  if (!match) {
+    return false;
+  }
   var count = Number(match[1]);
   var root = match[2];
 
@@ -33,7 +37,7 @@ RecrawlWarning.isRecrawlWarningDupe = function(warningMessage) {
   if (warning) {
     // only keep the highest count, assume count to either stay the same or
     // increase.
-    if (warning.count >= count ) {
+    if (warning.count >= count) {
       return true;
     } else {
       // update the existing warning to the latest (highest) count

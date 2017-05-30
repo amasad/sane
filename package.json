@@ -13,8 +13,9 @@
   ],
   "scripts": {
     "prepublish": "jshint --config=.jshintrc src/ index.js && mocha --bail",
-    "test": "jshint --config=.jshintrc src/ index.js && mocha --bail test/test.js && mocha --bail test/utils-test.js",
-    "test:debug": "mocha debug --bail"
+    "test": "npm run format && eslint src/ index.js && mocha --bail test/test.js && mocha --bail test/utils-test.js",
+    "test:debug": "mocha debug --bail",
+    "format": "prettier --trailing-comma es5 --single-quote --write index.js 'src/**/*.js'"
   },
   "bin": "./src/cli.js",
   "keywords": [
@@ -37,8 +38,9 @@
     "watch": "~0.10.0"
   },
   "devDependencies": {
-    "jshint": "^2.5.10",
+    "eslint": "^3.19.0",
     "mocha": "~1.17.1",
+    "prettier": "^1.3.1",
     "rimraf": "~2.2.6",
     "tmp": "0.0.27"
   },

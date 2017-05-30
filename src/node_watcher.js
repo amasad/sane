@@ -34,7 +34,7 @@ module.exports = NodeWatcher;
  */
 
 function NodeWatcher(dir, opts) {
-  opts = common.assignOptions(this, opts);
+  common.assignOptions(this, opts);
 
   this.watched = Object.create(null);
   this.changeTimers = Object.create(null);
@@ -74,11 +74,9 @@ NodeWatcher.prototype.__proto__ = EventEmitter.prototype;
 
 NodeWatcher.prototype.register = function(filepath) {
   var relativePath = path.relative(this.root, filepath);
-  if (!common.isFileIncluded(
-    this.globs,
-    this.dot,
-    this.doIgnore,
-    relativePath)) {
+  if (
+    !common.isFileIncluded(this.globs, this.dot, this.doIgnore, relativePath)
+  ) {
     return false;
   }
 
@@ -131,8 +129,10 @@ NodeWatcher.prototype.unregisterDir = function(dirpath) {
 
 NodeWatcher.prototype.registered = function(fullpath) {
   var dir = path.dirname(fullpath);
-  return this.dirRegistery[fullpath] ||
-    this.dirRegistery[dir] && this.dirRegistery[dir][path.basename(fullpath)];
+  return (
+    this.dirRegistery[fullpath] ||
+    (this.dirRegistery[dir] && this.dirRegistery[dir][path.basename(fullpath)])
+  );
 };
 
 /**
@@ -213,32 +213,37 @@ NodeWatcher.prototype.detectChangedFile = function(dir, event, callback) {
   }
 
   var found = false;
-  var closest = {mtime: 0};
+  var closest = { mtime: 0 };
   var c = 0;
   Object.keys(this.dirRegistery[dir]).forEach(function(file, i, arr) {
-    fs.lstat(path.join(dir, file), function(error, stat) {
-      if (found) {
-        return;
-      }
+    fs.lstat(
+      path.join(dir, file),
+      function(error, stat) {
+        if (found) {
+          return;
+        }
 
-      if (error) {
-        if (error.code === 'ENOENT' ||
-            (platform === 'win32' && error.code === 'EPERM')) {
-          found = true;
-          callback(file);
+        if (error) {
+          if (
+            error.code === 'ENOENT' ||
+            (platform === 'win32' && error.code === 'EPERM')
+          ) {
+            found = true;
+            callback(file);
+          } else {
+            this.emit('error', error);
+          }
         } else {
-          this.emit('error', error);
+          if (stat.mtime > closest.mtime) {
+            stat.file = file;
+            closest = stat;
+          }
+          if (arr.length === ++c) {
+            callback(closest.file);
+          }
         }
-      } else {
-        if (stat.mtime > closest.mtime) {
-          stat.file = file;
-          closest = stat;
-        }
-        if (arr.length === ++c) {
-          callback(closest.file);
-        }
-      }
-    }.bind(this));
+      }.bind(this)
+    );
   }, this);
 };
 
@@ -253,11 +258,15 @@ NodeWatcher.prototype.detectChangedFile = function(dir, event, callback) {
 
 NodeWatcher.prototype.normalizeChange = function(dir, event, file) {
   if (!file) {
-    this.detectChangedFile(dir, event, function(actualFile) {
-      if (actualFile) {
-        this.processChange(dir, event, actualFile);
-      }
-    }.bind(this));
+    this.detectChangedFile(
+      dir,
+      event,
+      function(actualFile) {
+        if (actualFile) {
+          this.processChange(dir, event, actualFile);
+        }
+      }.bind(this)
+    );
   } else {
     this.processChange(dir, event, path.normalize(file));
   }
@@ -275,39 +284,45 @@ NodeWatcher.prototype.normalizeChange = function(dir, event, file) {
 NodeWatcher.prototype.processChange = function(dir, event, file) {
   var fullPath = path.join(dir, file);
   var relativePath = path.join(path.relative(this.root, dir), file);
-  fs.lstat(fullPath, function(error, stat) {
-    if (error && error.code !== 'ENOENT') {
-      this.emit('error', error);
-    } else if (!error && stat.isDirectory()) {
-      // win32 emits usless change events on dirs.
-      if (event !== 'change') {
-        this.watchdir(fullPath);
-        if (common.isFileIncluded(
-          this.globs,
-          this.dot,
-          this.doIgnore,
-          relativePath)) {
-          this.emitEvent(ADD_EVENT, relativePath, stat);
+  fs.lstat(
+    fullPath,
+    function(error, stat) {
+      if (error && error.code !== 'ENOENT') {
+        this.emit('error', error);
+      } else if (!error && stat.isDirectory()) {
+        // win32 emits usless change events on dirs.
+        if (event !== 'change') {
+          this.watchdir(fullPath);
+          if (
+            common.isFileIncluded(
+              this.globs,
+              this.dot,
+              this.doIgnore,
+              relativePath
+            )
+          ) {
+            this.emitEvent(ADD_EVENT, relativePath, stat);
+          }
         }
-      }
-    } else {
-      var registered = this.registered(fullPath);
-      if (error && error.code === 'ENOENT') {
-        this.unregister(fullPath);
-        this.stopWatching(fullPath);
-        this.unregisterDir(fullPath);
-        if (registered) {
-          this.emitEvent(DELETE_EVENT, relativePath);
-        }
-      } else if (registered) {
-        this.emitEvent(CHANGE_EVENT, relativePath, stat);
       } else {
-        if (this.register(fullPath)) {
-          this.emitEvent(ADD_EVENT, relativePath, stat);
+        var registered = this.registered(fullPath);
+        if (error && error.code === 'ENOENT') {
+          this.unregister(fullPath);
+          this.stopWatching(fullPath);
+          this.unregisterDir(fullPath);
+          if (registered) {
+            this.emitEvent(DELETE_EVENT, relativePath);
+          }
+        } else if (registered) {
+          this.emitEvent(CHANGE_EVENT, relativePath, stat);
+        } else {
+          if (this.register(fullPath)) {
+            this.emitEvent(ADD_EVENT, relativePath, stat);
+          }
         }
       }
-    }
-  }.bind(this));
+    }.bind(this)
+  );
 };
 
 /**
@@ -326,33 +341,36 @@ NodeWatcher.prototype.emitEvent = function(type, file, stat) {
     return;
   }
   clearTimeout(this.changeTimers[key]);
-  this.changeTimers[key] = setTimeout(function() {
-    delete this.changeTimers[key];
-    if (type === ADD_EVENT && stat.isDirectory()) {
-      // Recursively emit add events and watch for sub-files/folders
-      recReaddir(
-        path.resolve(this.root, file),
-        function emitAddDir (dir, stats) {
-          this.watchdir(dir);
-          this.rawEmitEvent(ADD_EVENT, path.relative(this.root, dir), stats);
-        }.bind(this),
-        function emitAddFile (file, stats) {
-          this.register(file);
-          this.rawEmitEvent(ADD_EVENT, path.relative(this.root, file), stats);
-        }.bind(this),
-        function endCallback () {},
-        this.ignored
-      );
-    } else {
-      this.rawEmitEvent(type, file, stat);
-    }
-  }.bind(this), DEFAULT_DELAY);
+  this.changeTimers[key] = setTimeout(
+    function() {
+      delete this.changeTimers[key];
+      if (type === ADD_EVENT && stat.isDirectory()) {
+        // Recursively emit add events and watch for sub-files/folders
+        recReaddir(
+          path.resolve(this.root, file),
+          function emitAddDir(dir, stats) {
+            this.watchdir(dir);
+            this.rawEmitEvent(ADD_EVENT, path.relative(this.root, dir), stats);
+          }.bind(this),
+          function emitAddFile(file, stats) {
+            this.register(file);
+            this.rawEmitEvent(ADD_EVENT, path.relative(this.root, file), stats);
+          }.bind(this),
+          function endCallback() {},
+          this.ignored
+        );
+      } else {
+        this.rawEmitEvent(type, file, stat);
+      }
+    }.bind(this),
+    DEFAULT_DELAY
+  );
 };
 
 /**
  * Actually emit the events
  */
-NodeWatcher.prototype.rawEmitEvent = function (type, file, stat) {
+NodeWatcher.prototype.rawEmitEvent = function(type, file, stat) {
   this.emit(type, file, this.root, stat);
   this.emit(ALL_EVENT, type, file, this.root, stat);
 };

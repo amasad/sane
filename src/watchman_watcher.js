@@ -24,7 +24,6 @@ var SUB_NAME = 'sane-sub';
 
 module.exports = WatchmanWatcher;
 
-
 /**
  * Watches `dir`.
  *
@@ -35,7 +34,7 @@ module.exports = WatchmanWatcher;
  */
 
 function WatchmanWatcher(dir, opts) {
-  opts = common.assignOptions(this, opts);
+  common.assignOptions(this, opts);
   this.root = path.resolve(dir);
   this.init();
 }
@@ -81,9 +80,7 @@ WatchmanWatcher.prototype.init = function() {
     self.capabilities = resp.capabilities;
 
     if (self.capabilities.relative_root) {
-      self.client.command(
-        ['watch-project', getWatchRoot()], onWatchProject
-      );
+      self.client.command(['watch-project', getWatchRoot()], onWatchProject);
     } else {
       self.client.command(['watch', getWatchRoot()], onWatch);
     }
@@ -98,12 +95,11 @@ WatchmanWatcher.prototype.init = function() {
 
     self.watchProjectInfo = {
       root: resp.watch,
-      relativePath: resp.relative_path ? resp.relative_path : ''
+      relativePath: resp.relative_path ? resp.relative_path : '',
     };
 
     self.client.command(['clock', getWatchRoot()], onClock);
   }
-
 
   function onWatch(error, resp) {
     if (handleError(self, error)) {
@@ -124,7 +120,7 @@ WatchmanWatcher.prototype.init = function() {
 
     var options = {
       fields: ['name', 'exists', 'new'],
-      since: resp.clock
+      since: resp.clock,
     };
 
     // If the server has the wildmatch capability available it supports
@@ -136,16 +132,26 @@ WatchmanWatcher.prototype.init = function() {
       if (self.globs.length === 0) {
         if (!self.dot) {
           // Make sure we honor the dot option if even we're not using globs.
-          options.expression = ['match', '**', 'wholename', {
-            includedotfiles: false
-          }];
+          options.expression = [
+            'match',
+            '**',
+            'wholename',
+            {
+              includedotfiles: false,
+            },
+          ];
         }
       } else {
         options.expression = ['anyof'];
         for (var i in self.globs) {
-          options.expression.push(['match', self.globs[i], 'wholename', {
-            includedotfiles: self.dot
-          }]);
+          options.expression.push([
+            'match',
+            self.globs[i],
+            'wholename',
+            {
+              includedotfiles: self.dot,
+            },
+          ]);
         }
       }
     }
@@ -170,10 +176,12 @@ WatchmanWatcher.prototype.init = function() {
     self.emit('ready');
   }
 
-  self.client.capabilityCheck({
-      optional:['wildmatch', 'relative_root']
+  self.client.capabilityCheck(
+    {
+      optional: ['wildmatch', 'relative_root'],
     },
-    onCapability);
+    onCapability
+  );
 };
 
 /**
@@ -214,12 +222,10 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
     relativePath = changeDescriptor.name;
   }
 
-  if (!(self.capabilities.wildmatch && !this.hasIgnore) &&
-      !common.isFileIncluded(
-        this.globs,
-        this.dot,
-        this.doIgnore,
-        relativePath)) {
+  if (
+    !(self.capabilities.wildmatch && !this.hasIgnore) &&
+    !common.isFileIncluded(this.globs, this.dot, this.doIgnore, relativePath)
+  ) {
     return;
   }
 
