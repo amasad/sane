@@ -150,70 +150,6 @@ function harness(mode) {
         fs.writeFileSync(testfile, 'wow');
       });
     });
-
-    if (!mode.poll) {
-      it('emits events for subdir/subdir files', function(done) {
-        var subdir1 = 'subsub_1';
-        var subdir2 = 'subsub_2';
-        var filename = 'file_1';
-        var testfile = jo(testdir, subdir1, subdir2, filename);
-        var addedSubdir1 = false;
-        var addedSubdir2 = false;
-        var addedFile = false;
-        this.watcher.on('add', function(filepath) {
-          if (filepath === subdir1) {
-            assert.equal(addedSubdir1, false);
-            addedSubdir1 = true;
-          } else if (filepath === jo(subdir1, subdir2)) {
-            assert.equal(addedSubdir2, false);
-            addedSubdir2 = true;
-          } else if (filepath === jo(subdir1, subdir2, filename)) {
-            assert.equal(addedFile, false);
-            addedFile = true;
-          }
-          if (addedSubdir1 && addedSubdir2 && addedFile) {
-            done();
-          }
-        });
-        this.watcher.on('ready', function() {
-          fs.mkdirSync(jo(testdir, subdir1));
-          fs.mkdirSync(jo(testdir, subdir1, subdir2));
-          fs.writeFileSync(testfile, 'wow');
-        });
-      });
-      it('emits events for subdir/subdir files 2', function(done) {
-        var subdir1 = 'subsub_1b';
-        var subdir2 = 'subsub_2b';
-        var filename = 'file_1b';
-        var testfile = jo(testdir, subdir1, subdir2, filename);
-        var addedSubdir1 = false;
-        var addedSubdir2 = false;
-        var addedFile = false;
-        this.watcher.on('add', function(filepath) {
-          if (filepath === subdir1) {
-            assert.equal(addedSubdir1, false);
-            addedSubdir1 = true;
-          } else if (filepath === jo(subdir1, subdir2)) {
-            assert.equal(addedSubdir2, false);
-            addedSubdir2 = true;
-          } else if (filepath === jo(subdir1, subdir2, filename)) {
-            assert.equal(addedFile, false);
-            addedFile = true;
-          }
-          if (addedSubdir1 && addedSubdir2 && addedFile) {
-            done();
-          }
-        });
-        this.watcher.on('ready', function() {
-          fs.mkdirSync(jo(testdir, subdir1));
-          fs.mkdirSync(jo(testdir, subdir1, subdir2));
-          setTimeout(function() {
-            fs.writeFileSync(testfile, 'wow');
-          }, 500);
-        });
-      });
-    }
-
     it('adding a file will trigger an add event', function(done) {
       var testfile = jo(testdir, 'file_x' + Math.floor(Math.random() * 10000));
       this.watcher.on('add', function(filepath, dir, stat) {
@@ -381,6 +317,69 @@ function harness(mode) {
         });
       });
     });
+
+    if (!mode.poll) {
+      it('emits events for subdir/subdir files', function(done) {
+        var subdir1 = 'subsub_1';
+        var subdir2 = 'subsub_2';
+        var filename = 'file_1';
+        var testfile = jo(testdir, subdir1, subdir2, filename);
+        var addedSubdir1 = false;
+        var addedSubdir2 = false;
+        var addedFile = false;
+        this.watcher.on('add', function(filepath) {
+          if (filepath === subdir1) {
+            assert.equal(addedSubdir1, false);
+            addedSubdir1 = true;
+          } else if (filepath === jo(subdir1, subdir2)) {
+            assert.equal(addedSubdir2, false);
+            addedSubdir2 = true;
+          } else if (filepath === jo(subdir1, subdir2, filename)) {
+            assert.equal(addedFile, false);
+            addedFile = true;
+          }
+          if (addedSubdir1 && addedSubdir2 && addedFile) {
+            done();
+          }
+        });
+        this.watcher.on('ready', function() {
+          fs.mkdirSync(jo(testdir, subdir1));
+          fs.mkdirSync(jo(testdir, subdir1, subdir2));
+          fs.writeFileSync(testfile, 'wow');
+        });
+      });
+      it('emits events for subdir/subdir files 2', function(done) {
+        var subdir1 = 'subsub_1b';
+        var subdir2 = 'subsub_2b';
+        var filename = 'file_1b';
+        var testfile = jo(testdir, subdir1, subdir2, filename);
+        var addedSubdir1 = false;
+        var addedSubdir2 = false;
+        var addedFile = false;
+        this.watcher.on('add', function(filepath) {
+          if (filepath === subdir1) {
+            assert.equal(addedSubdir1, false);
+            addedSubdir1 = true;
+          } else if (filepath === jo(subdir1, subdir2)) {
+            assert.equal(addedSubdir2, false);
+            addedSubdir2 = true;
+          } else if (filepath === jo(subdir1, subdir2, filename)) {
+            assert.equal(addedFile, false);
+            addedFile = true;
+          }
+          if (addedSubdir1 && addedSubdir2 && addedFile) {
+            done();
+          }
+        });
+        this.watcher.on('ready', function() {
+          fs.mkdirSync(jo(testdir, subdir1));
+          fs.mkdirSync(jo(testdir, subdir1, subdir2));
+          setTimeout(function() {
+            fs.writeFileSync(testfile, 'wow');
+          }, 500);
+        });
+      });
+    }
   });
 
   describe('sane(file, glob)', function() {
