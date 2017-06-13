@@ -2,11 +2,9 @@
 
 var fs = require('fs');
 var path = require('path');
-var walker = require('walker');
 var common = require('./common');
 var platform = require('os').platform();
 var EventEmitter = require('events').EventEmitter;
-var anymatch = require('anymatch');
 
 /**
  * Constants
@@ -44,7 +42,7 @@ function NodeWatcher(dir, opts) {
   this.register = this.register.bind(this);
 
   this.watchdir(this.root);
-  recReaddir(
+  common.recReaddir(
     this.root,
     this.watchdir,
     this.register,
@@ -346,7 +344,7 @@ NodeWatcher.prototype.emitEvent = function(type, file, stat) {
       delete this.changeTimers[key];
       if (type === ADD_EVENT && stat.isDirectory()) {
         // Recursively emit add events and watch for sub-files/folders
-        recReaddir(
+        common.recReaddir(
           path.resolve(this.root, file),
           function emitAddDir(dir, stats) {
             this.watchdir(dir);
@@ -374,45 +372,3 @@ NodeWatcher.prototype.rawEmitEvent = function(type, file, stat) {
   this.emit(type, file, this.root, stat);
   this.emit(ALL_EVENT, type, file, this.root, stat);
 };
-
-/**
- * Traverse a directory recursively calling `callback` on every directory.
- *
- * @param {string} dir
- * @param {function} dirCallback
- * @param {function} fileCallback
- * @param {function} endCallback
- * @param {*} ignored
- * @private
- */
-
-function recReaddir(dir, dirCallback, fileCallback, endCallback, ignored) {
-  walker(dir)
-    .filterDir(function(currentDir) {
-      return !anymatch(ignored, currentDir);
-    })
-    .on('dir', normalizeProxy(dirCallback))
-    .on('file', normalizeProxy(fileCallback))
-    .on('end', function() {
-      if (platform === 'win32') {
-        setTimeout(endCallback, 1000);
-      } else {
-        endCallback();
-      }
-    });
-}
-
-/**
- * Returns a callback that when called will normalize a path and call the
- * original callback
- *
- * @param {function} callback
- * @return {function}
- * @private
- */
-
-function normalizeProxy(callback) {
-  return function(filepath, stats) {
-    return callback(path.normalize(filepath), stats);
-  };
-}

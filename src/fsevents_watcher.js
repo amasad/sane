@@ -36,65 +36,55 @@ function FSEventsWatcher(dir, opts) {
   this.root = path.resolve(dir);
   this.watcher = fsevents(this.root);
 
-  this.watcher
-    .start()
-    .on('modified', this.emitEvent.bind(this, CHANGE_EVENT))
-    .on('created', this.emitEvent.bind(this, ADD_EVENT))
-    .on('deleted', this.emitEvent.bind(this, DELETE_EVENT));
+  this.watcher.start().on('change', this.handleEvent.bind(this));
+  this._tracked = Object.create(null);
 
-  setTimeout(this.emit.bind(this, 'ready'));
+  common.recReaddir(
+    this.root,
+    filepath => (this._tracked[filepath] = true),
+    filepath => (this._tracked[filepath] = true),
+    this.emit.bind(this, 'ready'),
+    this.ignored
+  );
 }
 
 FSEventsWatcher.prototype.__proto__ = EventEmitter.prototype;
 
-/**
- * Given an absolute path of a file or directory check if we need to watch it.
- *
- * @param {string} filepath
- * @param {object} stat
- * @private
- */
+FSEventsWatcher.prototype.handleEvent = function(filepath) {
+  var relativePath = path.relative(this.root, filepath);
+  if (
+    !common.isFileIncluded(this.globs, this.dot, this.doIgnore, relativePath)
+  ) {
+    return;
+  }
 
-FSEventsWatcher.prototype.filter = function(filepath, stat) {
-  return (
-    stat.isDirectory() ||
-    common.isFileIncluded(
-      this.globs,
-      this.dot,
-      this.doIgnore,
-      path.relative(this.root, filepath)
-    )
-  );
-};
-
-/**
- * Normalize and emit an event.
- *
- * @param {EventEmitter} monitor
- * @private
- */
-
-FSEventsWatcher.prototype.emitEvent = function(type, file) {
-  var self = this;
-  console.log('here');
-  if (type === DELETE_EVENT) {
-    emit(null);
-  } else {
-    fs.lstat(file, function(err, stat) {
-      if (err) {
-        self.emit('error', err);
+  fs.lstat(
+    filepath,
+    function(error, stat) {
+      if (error && error.code !== 'ENOENT') {
+        this.emit('error', error);
         return;
       }
 
-      emit(stat);
-    });
-  }
+      if (error) {
+        // Ignore files that aren't tracked and don't exist.
+        if (!this._tracked[filepath]) {
+          return;
+        }
 
-  function emit(stat) {
-    file = path.relative(self.root, file);
-    self.emit(type, file, self.root, stat);
-    self.emit(ALL_EVENT, type, file, self.root, stat);
-  }
+        this._emit(DELETE_EVENT, relativePath);
+        delete this._tracked[filepath];
+        return;
+      }
+
+      if (this._tracked[filepath]) {
+        this._emit(CHANGE_EVENT, relativePath, stat);
+      } else {
+        this._tracked[filepath] = true;
+        this._emit(ADD_EVENT, relativePath, stat);
+      }
+    }.bind(this)
+  );
 };
 
 /**
@@ -109,4 +99,15 @@ FSEventsWatcher.prototype.close = function(callback) {
   if (typeof callback === 'function') {
     setImmediate(callback.bind(null, null, true));
   }
+};
+
+/**
+ * Emit events.
+ *
+ * @private
+ */
+
+FSEventsWatcher.prototype._emit = function(type, file, stat) {
+  this.emit(type, file, this.root, stat);
+  this.emit(ALL_EVENT, type, file, this.root, stat);
 };
