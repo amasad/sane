@@ -97,7 +97,7 @@ FSEventsWatcher.prototype.close = function(callback) {
   this.watcher.stop();
   this.removeAllListeners();
   if (typeof callback === 'function') {
-    setImmediate(callback.bind(null, null, true));
+    process.nextTick(callback.bind(null, null, true));
   }
 };
 
