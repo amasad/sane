@@ -4,7 +4,13 @@ var fs = require('fs');
 var path = require('path');
 var common = require('./common');
 var EventEmitter = require('events').EventEmitter;
-var fsevents = require('fsevents');
+var fsevents;
+
+try {
+  fsevents = require('fsevents');
+} catch (e) {
+  // Ignore.
+}
 
 /**
  * Constants
@@ -31,6 +37,12 @@ module.exports = FSEventsWatcher;
  */
 
 function FSEventsWatcher(dir, opts) {
+  if (!fsevents) {
+    throw new Error(
+      '`fsevents` unavailable (this watcher can only be used on Darwin)'
+    );
+  }
+
   common.assignOptions(this, opts);
 
   this.root = path.resolve(dir);
