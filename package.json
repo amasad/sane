@@ -12,7 +12,6 @@
     "index.js"
   ],
   "scripts": {
-    "prepublish": "jshint --config=.jshintrc src/ index.js && mocha --bail",
     "test": "npm run format && eslint src/ test/ index.js && mocha --bail test/test.js && mocha --bail test/utils-test.js",
     "test:debug": "mocha debug --bail",
     "format": "prettier --trailing-comma es5 --single-quote --write index.js 'src/**/*.js' 'test/**/*.js'"
@@ -50,5 +49,8 @@
   "bugs": {
     "url": "https://github.com/amasad/sane/issues"
   },
-  "homepage": "https://github.com/amasad/sane"
+  "homepage": "https://github.com/amasad/sane",
+  "optionalDependencies": {
+    "fsevents": "^1.1.1"
+  }
 }

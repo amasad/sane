@@ -1,7 +1,10 @@
 'use strict';
 
+var walker = require('walker');
 var anymatch = require('anymatch');
 var minimatch = require('minimatch');
+var path = require('path');
+var platform = require('os').platform();
 
 /**
  * Constants
@@ -69,3 +72,51 @@ exports.isFileIncluded = function(globs, dot, doIgnore, relativePath) {
   }
   return matched;
 };
+
+/**
+ * Traverse a directory recursively calling `callback` on every directory.
+ *
+ * @param {string} dir
+ * @param {function} dirCallback
+ * @param {function} fileCallback
+ * @param {function} endCallback
+ * @param {*} ignored
+ * @public
+ */
+
+exports.recReaddir = function(
+  dir,
+  dirCallback,
+  fileCallback,
+  endCallback,
+  ignored
+) {
+  walker(dir)
+    .filterDir(function(currentDir) {
+      return !anymatch(ignored, currentDir);
+    })
+    .on('dir', normalizeProxy(dirCallback))
+    .on('file', normalizeProxy(fileCallback))
+    .on('end', function() {
+      if (platform === 'win32') {
+        setTimeout(endCallback, 1000);
+      } else {
+        endCallback();
+      }
+    });
+};
+
+/**
+ * Returns a callback that when called will normalize a path and call the
+ * original callback
+ *
+ * @param {function} callback
+ * @return {function}
+ * @private
+ */
+
+function normalizeProxy(callback) {
+  return function(filepath, stats) {
+    return callback(path.normalize(filepath), stats);
+  };
+}
