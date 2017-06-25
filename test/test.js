@@ -7,6 +7,7 @@ var rimraf = require('rimraf');
 var path = require('path');
 var assert = require('assert');
 var tmp = require('tmp');
+var os = require('os');
 
 tmp.setGracefulCleanup();
 var jo = path.join.bind(path);
@@ -17,9 +18,13 @@ describe('sane in polling mode', function() {
 describe('sane in node mode', function() {
   harness.call(this, {});
 });
-describe('sane in fsevents mode', function() {
-  harness.call(this, { fsevents: true });
-});
+
+if (os.platform() === 'darwin') {
+  describe('sane in fsevents mode', function() {
+    harness.call(this, { fsevents: true });
+  });
+}
+
 describe('sane in watchman mode', function() {
   harness.call(this, { watchman: true });
 });
