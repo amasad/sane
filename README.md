@@ -95,7 +95,10 @@ Usage: sane <command> [...directory] [--glob=<filePattern>] [--poll] [--watchman
 
 OPTIONS:
     --glob=<filePattern>
-        A single string glob pattern or an array of them.
+      A single string glob pattern or an array of them.
+
+    --ignored=<filePattern>
+      A glob, regex, function, or array of any combination.
 
     --poll, -p
       Use polling mode.
@@ -107,9 +110,9 @@ OPTIONS:
       Enables watching files/directories that start with a dot.
 
     --wait=<seconds>
-        Duration, in seconds, that watching will be disabled
-        after running <command>. Setting this option will
-        throttle calls to <command> for the specified duration.
+      Duration, in seconds, that watching will be disabled
+      after running <command>. Setting this option will
+      throttle calls to <command> for the specified duration.
 ```
 
 It will watch the given `directory` and run the given <command> every time a file changes.
@@ -118,6 +121,7 @@ It will watch the given `directory` and run the given <command> every time a fil
 - `sane 'echo "A command ran"'`
 - `sane 'echo "A command ran"' --glob='**/*.css'`
 - `sane 'echo "A command ran"' site/assets/css --glob='**/*.css'`
+- `sane 'echo "A command ran"' --glob='**/*.css' --ignored='**/ignore.css'`
 - `sane 'echo "A command ran"' --wait=3`
 - `sane 'echo "A command ran"' -p`
 
