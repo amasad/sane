@@ -56,6 +56,7 @@ function FSEventsWatcher(dir, opts) {
     filepath => (this._tracked[filepath] = true),
     filepath => (this._tracked[filepath] = true),
     this.emit.bind(this, 'ready'),
+    this.emit.bind(this, 'error'),
     this.ignored
   );
 }
