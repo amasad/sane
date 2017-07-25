@@ -40,6 +40,7 @@ function NodeWatcher(dir, opts) {
   this.root = path.resolve(dir);
   this.watchdir = this.watchdir.bind(this);
   this.register = this.register.bind(this);
+  this.checkedEmitError = this.checkedEmitError.bind(this);
 
   this.watchdir(this.root);
   common.recReaddir(
@@ -47,6 +48,7 @@ function NodeWatcher(dir, opts) {
     this.watchdir,
     this.register,
     this.emit.bind(this, 'ready'),
+    this.checkedEmitError,
     this.ignored
   );
 }
@@ -134,6 +136,31 @@ NodeWatcher.prototype.registered = function(fullpath) {
 };
 
 /**
+ * Determine if a given FS error can be ignored
+ *
+ * @private
+ */
+function isIgnorableFileError(error) {
+  return (
+    error.code === 'ENOENT' ||
+    // Workaround Windows node issue #4337.
+    (error.code === 'EPERM' && platform === 'win32')
+  );
+}
+
+/**
+ * Emit "error" event if it's not an ignorable event
+ *
+ * @param error
+ * @private
+ */
+NodeWatcher.prototype.checkedEmitError = function(error) {
+  if (!isIgnorableFileError(error)) {
+    this.emit('error', error);
+  }
+};
+
+/**
  * Watch a directory.
  *
  * @param {string} dir
@@ -152,14 +179,7 @@ NodeWatcher.prototype.watchdir = function(dir) {
   );
   this.watched[dir] = watcher;
 
-  // Workaround Windows node issue #4337.
-  if (platform === 'win32') {
-    watcher.on('error', function(error) {
-      if (error.code !== 'EPERM') {
-        throw error;
-      }
-    });
-  }
+  watcher.on('error', this.checkedEmitError);
 
   if (this.root !== dir) {
     this.register(dir);
@@ -222,10 +242,7 @@ NodeWatcher.prototype.detectChangedFile = function(dir, event, callback) {
         }
 
         if (error) {
-          if (
-            error.code === 'ENOENT' ||
-            (platform === 'win32' && error.code === 'EPERM')
-          ) {
+          if (isIgnorableFileError(error)) {
             found = true;
             callback(file);
           } else {
@@ -355,6 +372,7 @@ NodeWatcher.prototype.emitEvent = function(type, file, stat) {
             this.rawEmitEvent(ADD_EVENT, path.relative(this.root, file), stats);
           }.bind(this),
           function endCallback() {},
+          this.checkedEmitError,
           this.ignored
         );
       } else {

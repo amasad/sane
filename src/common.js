@@ -89,6 +89,7 @@ exports.recReaddir = function(
   dirCallback,
   fileCallback,
   endCallback,
+  errorCallback,
   ignored
 ) {
   walker(dir)
@@ -97,6 +98,7 @@ exports.recReaddir = function(
     })
     .on('dir', normalizeProxy(dirCallback))
     .on('file', normalizeProxy(fileCallback))
+    .on('error', errorCallback)
     .on('end', function() {
       if (platform === 'win32') {
         setTimeout(endCallback, 1000);
