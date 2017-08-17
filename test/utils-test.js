@@ -86,7 +86,7 @@ describe.only('RecrawlWarning', function() {
       it('new message', function() {
         assert.equal(
           RecrawlWarning.isRecrawlWarningDupe(
-            'Recrawled this watch 1 times, most recently because:\n\/foo\/bar\/baz:'
+            'Recrawled this watch 1 times, most recently because:\n/foo/bar/baz:'
           ),
           false
         );
@@ -95,13 +95,13 @@ describe.only('RecrawlWarning', function() {
       it('same message twice', function() {
         assert.equal(
           RecrawlWarning.isRecrawlWarningDupe(
-            'Recrawled this watch 2 times, most recently because:\n\/foo\/bar\/baz:'
+            'Recrawled this watch 2 times, most recently because:\n/foo/bar/baz:'
           ),
           false
         );
         assert.equal(
           RecrawlWarning.isRecrawlWarningDupe(
-            'Recrawled this watch 2 times, most recently because:\n\/foo\/bar\/baz:'
+            'Recrawled this watch 2 times, most recently because:\n/foo/bar/baz:'
           ),
           true
         );
@@ -110,13 +110,13 @@ describe.only('RecrawlWarning', function() {
       it('same count, but different root twice', function() {
         assert.equal(
           RecrawlWarning.isRecrawlWarningDupe(
-            'Recrawled this watch 2 times, most recently because:\n\/foo\/bar\/baz:'
+            'Recrawled this watch 2 times, most recently because:\n/foo/bar/baz:'
           ),
           false
         );
         assert.equal(
           RecrawlWarning.isRecrawlWarningDupe(
-            'Recrawled this watch 2 times, most recently because:\n\/baz\/bar\/baz:'
+            'Recrawled this watch 2 times, most recently because:\n/baz/bar/baz:'
           ),
           false
         );
@@ -125,19 +125,19 @@ describe.only('RecrawlWarning', function() {
       it('incrementing count, but fixed root', function() {
         assert.equal(
           RecrawlWarning.isRecrawlWarningDupe(
-            'Recrawled this watch 2 times, most recently because:\n\/foo\/bar\/baz:'
+            'Recrawled this watch 2 times, most recently because:\n/foo/bar/baz:'
           ),
           false
         );
         assert.equal(
           RecrawlWarning.isRecrawlWarningDupe(
-            'Recrawled this watch 3 times, most recently because:\n\/foo\/bar\/baz:'
+            'Recrawled this watch 3 times, most recently because:\n/foo/bar/baz:'
           ),
           false
         );
         assert.equal(
           RecrawlWarning.isRecrawlWarningDupe(
-            'Recrawled this watch 4 times, most recently because:\n\/foo\/bar\/baz:'
+            'Recrawled this watch 4 times, most recently because:\n/foo/bar/baz:'
           ),
           false
         );
@@ -146,19 +146,19 @@ describe.only('RecrawlWarning', function() {
       it('decrementing count, but fixed root', function() {
         assert.equal(
           RecrawlWarning.isRecrawlWarningDupe(
-            'Recrawled this watch 4 times, most recently because:\n\/foo\/bar\/baz:'
+            'Recrawled this watch 4 times, most recently because:\n/foo/bar/baz:'
           ),
           false
         );
         assert.equal(
           RecrawlWarning.isRecrawlWarningDupe(
-            'Recrawled this watch 3 times, most recently because:\n\/foo\/bar\/baz:'
+            'Recrawled this watch 3 times, most recently because:\n/foo/bar/baz:'
           ),
           true
         );
         assert.equal(
           RecrawlWarning.isRecrawlWarningDupe(
-            'Recrawled this watch 2 times, most recently because:\n\/foo\/bar\/baz:'
+            'Recrawled this watch 2 times, most recently because:\n/foo/bar/baz:'
           ),
           true
         );
