@@ -8,7 +8,8 @@ var execshell = require('exec-sh');
 if (argv._.length === 0) {
   var msg =
     'Usage: sane <command> [...directory] [--glob=<filePattern>] ' +
-    '[--poll] [--watchman] [--dot] [--wait=<seconds>]';
+    '[--ignored=<filePattern>] [--poll] [--watchman] [--dot] ' +
+    '[--wait=<seconds>]';
   console.error(msg);
   process.exit();
 }
@@ -19,6 +20,7 @@ var dir = argv._[1] || process.cwd();
 var waitTime = Number(argv.wait || argv.w);
 var dot = argv.dot || argv.d;
 var glob = argv.glob || argv.g;
+var ignored = argv.ignored || argv.i;
 var poll = argv.poll || argv.p;
 var watchman = argv.watchman || argv.w;
 
@@ -27,6 +29,9 @@ if (dot) {
 }
 if (glob) {
   opts.glob = glob;
+}
+if (ignored) {
+  opts.ignored = ignored;
 }
 if (poll) {
   opts.poll = true;
