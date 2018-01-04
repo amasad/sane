@@ -34,7 +34,7 @@ maintains the same API across all modes and will be easy to switch.
 
 ### sane(dir, options)
 
-Watches a directory and all it's descendant directories for changes, deletions, and additions on files and directories.
+Watches a directory and all its descendant directories for changes, deletions, and additions on files and directories.
 
 ```js
 var watcher = sane('path/to/dir', {glob: ['**/*.js', '**/*.css']});
@@ -44,6 +44,26 @@ watcher.on('add', function (filepath, root, stat) { console.log('file added', fi
 watcher.on('delete', function (filepath, root) { console.log('file deleted', filepath); });
 // close
 watcher.close();
+```
+
+In addition to change events, the `watchman`-specific watcher may emit a
+`fresh_instance` event that signals the state got lost and we will not receive
+notifications for some of the changes. When this happens it is recommended to
+empty or reset any cache that tracks the state of the files. The event is
+immediately followed by change events for each file that does exist, that
+you can leverage to fill a cache again.
+
+For example, say we want to write an application that keeps track of file paths
+in a `Set`. Here is a possible way to handle it:
+
+```js
+function findFiles() { return new Set(glob('**/*.js')); }
+var files = findFiles();
+var watcher = sane('.', {glob: '**/*.js'});
+
+watcher.on('fresh_instance', () => { files = findFiles(); });
+watcher.on('delete', filepath => { files.delete(filepath); });
+watcher.on('add', filepath => { files.add(filepath); });
 ```
 
 options:
@@ -85,6 +105,7 @@ All events are passed the file/dir path relative to the root directory
 * `change` when a file changes
 * `add` when a file or directory has been added
 * `delete` when a file or directory has been deleted
+* `fresh_instance` when some change events may have been lost (`watchman`-only)
 
 ## CLI
 
