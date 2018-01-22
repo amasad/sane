@@ -41,6 +41,11 @@ exports.assignOptions = function(watcher, opts) {
     : function() {
         return false;
       };
+
+  if (opts.watchman && opts.watchmanPath) {
+    watcher.watchmanPath = opts.watchmanPath;
+  }
+
   return opts;
 };
 
