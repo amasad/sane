@@ -183,8 +183,6 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
       // Change event on dirs are mostly useless.
       if (!(eventType === CHANGE_EVENT && stat.isDirectory())) {
         self.emitEvent(eventType, relativePath, self.root, stat);
-        // For quick test
-        self.client.onEnd();
       }
     });
   }

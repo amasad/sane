@@ -265,7 +265,7 @@ function WatchmanClient() {
     // error to all WatchmanWatchers.
 
     // hold the old watcher map so we use it to recreate all subscriptions.
-    let oldWatcherInfos = Object.values(oldWatcherMap);
+    let oldWatcherInfos = Object.values(_watcherMap);
 
     clearLocalVars();
     
