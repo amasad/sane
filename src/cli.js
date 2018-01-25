@@ -8,7 +8,7 @@ var execshell = require('exec-sh');
 if (argv._.length === 0) {
   var msg =
     'Usage: sane <command> [...directory] [--glob=<filePattern>] ' +
-    '[--ignored=<filePattern>] [--poll] [--watchman] [--dot] ' +
+    '[--ignored=<filePattern>] [--poll] [--watchman] [--watchman-path=<watchmanBinaryPath>] [--dot] ' +
     '[--wait=<seconds>]';
   console.error(msg);
   process.exit();
@@ -23,6 +23,7 @@ var glob = argv.glob || argv.g;
 var ignored = argv.ignored || argv.i;
 var poll = argv.poll || argv.p;
 var watchman = argv.watchman || argv.w;
+var watchmanPath = argv['watchman-path'];
 
 if (dot) {
   opts.dot = true;
@@ -38,6 +39,9 @@ if (poll) {
 }
 if (watchman) {
   opts.watchman = true;
+}
+if (watchmanPath) {
+  opts.watchmanPath = watchmanPath;
 }
 
 var wait = false;

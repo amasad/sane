@@ -33,6 +33,7 @@ function WatchmanClient() {
   var _relative_root;
   var _subscriptionId;
   var _watcherMap;
+  var _watchmanPath;
 
   var _clientListeners = null;  // direct listeners from WC to watchman.Client.
 
@@ -40,13 +41,18 @@ function WatchmanClient() {
   // are reestablishing the connection.
   clearLocalVars();
   
-  function getClient() {
+  // Set up the connection to the watchman client. If the optional
+  // value watchmanPath is passed in AND we're not already in the
+  // middle of setting up the client, use that as the path to the
+  // binary. In either case, return a promise that will be fulfilled
+  // when the client has been set up and capabilities have been returned.
+  function getClient(watchmanPath) {
     var self = this;
     
     if (!_clientPromise) {
       _clientPromise = new Promise((resolve, reject) => {
 
-        let client = new watchman.Client();
+        let client = new watchman.Client(watchmanPath ? { watchmanBinaryPath: watchmanPath} : {});
 
         // reset the relevant local values
 
@@ -73,8 +79,8 @@ function WatchmanClient() {
 
   function clearLocalVars() {
     if (_client) {
-      _client.end();
       _client.removeAllListeners();
+      _client.end();
     }
 
     _client = null;
@@ -83,12 +89,12 @@ function WatchmanClient() {
     _relative_root = false;
     _subscriptionId = 1;
     _watcherMap = {};
+    _watchmanPath = null;
   }
 
   /**
-   * We're the only object directly listening to watchman.Client.
-   * As appropriate, we'll forward to the relevant watcher when
-   * necessary (basically in onSubscription).
+   * This singleton is the only object directly listening to our
+   * watchman.Client. Set up our listeners.
    */
   function setupClientListeners(self) {
     _client.on('subscription', onSubscription.bind(self));
@@ -101,10 +107,10 @@ function WatchmanClient() {
     return val;
   }
 
-  // Return the watcherMap entry for a particular subscription.
-  // If there isn't one, create a new one and assign the watchmanWatcher to it.
-  // Note: should only pass watchmanWatcher during 'subscribe' when the
-  // entry will be created.
+  /**
+   * Create a new watcherInfo entry for the given watchmanWatcher and 
+   * initialize it.
+   */
   function createWatcherInfo(watchmanWatcher) {
     let watcherInfo = {
       subscription: getSubscription(),
@@ -120,15 +126,20 @@ function WatchmanClient() {
     return watcherInfo;
   }
 
+  /**
+   * Find an existing watcherInfo instance.
+   */
   function getWatcherInfo(subscription) {
     var watcherInfo = _watcherMap[subscription];
     return watcherInfo;
   }
 
-  // Given a watchmanWatcher and a root, issue the correct 'watch'
-  // or 'watch-project' command and handle it with the callback.
-  // Because we're operating in 'sane', we'll keep the results
-  // of the 'watch' or 'watch-project' here.
+  /**
+   * Given a watchmanWatcher and a root, issue the correct 'watch'
+   * or 'watch-project' command and handle it with the callback.
+   * Because we're operating in 'sane', we'll keep the results
+   * of the 'watch' or 'watch-project' here.
+   */
   function watch(subscription, root) {
     var self = this;
     
@@ -161,8 +172,10 @@ function WatchmanClient() {
     return promise;
   }
   
-  // Issue the 'clock' command to get the time value for use with the 'since'
-  // option during 'subscribe'.
+  /**
+   * Issue the 'clock' command to get the time value for use with the 'since'
+   * option during 'subscribe'.
+   */
   function clock(subscription) {
     var self = this;
 
@@ -182,6 +195,11 @@ function WatchmanClient() {
     return promise;
   }
 
+  /**
+   * Called from WatchmanWatcher (or this object during reconnect) to create
+   * a watcherInfo entry in our _watcherMap and issue a 'subscribe' to the
+   * watchman.Client, to be handled in this object.
+   */
   function subscribe(watchmanWatcher, root) {
     var self = this;
 
@@ -236,18 +254,26 @@ function WatchmanClient() {
     return promise;
   }
 
-  // Handle the 'subscription' (file change) event
+  /**
+   * Handle the 'subscription' (file change) event, by calling the 
+   * handler on the relevant WatchmanWatcher.
+   */
   function onSubscription(resp) {
     let watcherInfo = getWatcherInfo(resp.subscription);
     if (watcherInfo) {
       watcherInfo.watchmanWatcher.handleChangeEvent(resp);
     } else {
       // Note it in the log, but otherwise ignore it
-      console.log("WatchmanClient error - received 'subscription' event for non-existent subscription '" +
+      console.log("WatchmanClient error - received 'subscription' event " +
+                  "for non-existent subscription '" +
                   resp.subscription + "'");
     }
   }
 
+  /**
+   * Handle the 'error' event by forwarding to the
+   * handler on the relevant WatchmanWatcher.
+   */
   function onError(error) {
     console.error('Error from watchman in WatchmanClient. Forwarding to WatchmanWatchers');
     console.error(error);
@@ -255,21 +281,24 @@ function WatchmanClient() {
                                        watcherInfo.watchmanWatcher.handleErrorEvent(error));
   }
   
+  /**
+   * Handle the 'end' event by creating a new watchman.Client and
+   * attempting to resubscribe all the existing subscriptions, but
+   * without notifying the WatchmanWatchers about it. They should
+   * not be aware the connection was lost and recreated.
+   * If something goes wrong during any part of the reconnect/setup,
+   * call the error handler on each existing WatchmanWatcher.
+   */
   function onEnd() {
     console.warn('[sane.WatchmanClient] Warning: Lost connection to watchman, reconnecting..');
 
-    // Basically do a 'reset' on everything, but without telling the
-    // WatchmanWatchers about it, so they think everything is still working.
-    // We'll assume that things MUST complete successfully for everything to
-    // continue as is, or we'll need to shut everything down by reporting an
-    // error to all WatchmanWatchers.
-
     // hold the old watcher map so we use it to recreate all subscriptions.
     let oldWatcherInfos = Object.values(_watcherMap);
+    let watchmanPath = _watchmanPath;
 
     clearLocalVars();
     
-    getClient()
+    getClient(watchmanPath)
       .then(
         (client) => {
           let promises = oldWatcherInfos.map((watcherInfo) =>
@@ -304,8 +333,6 @@ function WatchmanClient() {
       return _wildmatch;
     },
 
-    // For quick test
-    onEnd: onEnd,
     getClient: getClient,
     subscribe: subscribe
   }

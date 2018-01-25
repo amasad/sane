@@ -51,6 +51,7 @@ options:
 * `glob`: a single string glob pattern or an array of them.
 * `poll`: puts the watcher in polling mode. Under the hood that means `fs.watchFile`.
 * `watchman`: makes the watcher use [watchman](https://facebook.github.io/watchman/).
+* `watchmanPath`: sets a custom path for `watchman` binary.
 * `dot`: enables watching files/directories that start with a dot.
 * `ignored`: a glob, regex, function, or array of any combination.
 
@@ -91,7 +92,7 @@ All events are passed the file/dir path relative to the root directory
 This module includes a simple command line interface, which you can install with `npm install sane -g`.
 
 ```
-Usage: sane <command> [...directory] [--glob=<filePattern>] [--poll] [--watchman] [--dot] [--wait=<seconds>]
+Usage: sane <command> [...directory] [--glob=<filePattern>] [--poll] [--watchman] [--watchman-path=<watchmanBinaryPath>] [--dot] [--wait=<seconds>]
 
 OPTIONS:
     --glob=<filePattern>
@@ -105,6 +106,9 @@ OPTIONS:
 
     --watchman, -w
       Use watchman (if available).
+
+    --watchman-path=<watchmanBinaryPath>
+      Sets a custom path for watchman binary (if using this mode).
 
     --dot, -d
       Enables watching files/directories that start with a dot.

@@ -51,16 +51,10 @@ WatchmanWatcher.prototype.init = function() {
     this.client = null;
   }
 
-  // Create the 'options' structure for subscribe.
-  // NOTE: this leaves out two things from the options, that
-  // will be added by the WatchmanClient.
-  //   - the 'since' field. This will be added in WC based on
-  //     doing its own call to 'clock' for this watch.
-  //   - the 'relative_root' field. We're hiding the existence
-  //     of 'watch' vs 'watch-project' in the WatchmanClient, so
-  //     this level doesn't even know about it.
-
-  watchmanClient.getClient()
+  // Create/setup the WatchmanClient singleton, passing in our watchmanPath
+  // if we have one (optional). Then subscribe, which will do the appropriate
+  // setup so that we will receive calls to handleChangeEvent when files change.
+  watchmanClient.getClient(this.watchmanPath)
     .then((client) => {
       self.client = client;
 
@@ -75,10 +69,9 @@ WatchmanWatcher.prototype.init = function() {
 
 /**
  * Called by WatchmanClient to create the options, either during initial 'subscribe'
- * or to recalculate after a disconnect+reconnect ('end' event), in case 'wildmatch'
- * changes values in the meantime. Note that we are leaving out the 'since' and 
- * 'relative_root' options. Those are dealt with inside the WatchmanClient--this 
- * watcher doesn't really need to even know about them.
+ * or to resubscribe after a disconnect+reconnect. Note that we are leaving out 
+ * the watchman 'since' and 'relative_root' options, which are handled inside the 
+ * WatchmanClient.
  */
 WatchmanWatcher.prototype.createOptions = function() {
   var self = this;
@@ -124,21 +117,23 @@ WatchmanWatcher.prototype.createOptions = function() {
 }
 
 /**
- * Called by WatchmanClient when it receives an error from the watchman server.
+ * Called by WatchmanClient when it receives an error from the watchman daemon.
+ *
+ * @param {Object} resp
  */
 WatchmanWatcher.prototype.handleErrorEvent = function(error) {
   this.emit('error', error);
 }
 
 /**
- * Handles a change event coming from the subscription.
+ * Called by the WatchmanClient when it is notified about a file change in
+ * the tree for this particular watcher's root.
  *
  * @param {Object} resp
  * @private
  */
 
 WatchmanWatcher.prototype.handleChangeEvent = function(resp) {
-  console.log("WW.handleChangeEvent for resp.subscription [" + resp.subscription + "]");
   if (Array.isArray(resp.files)) {
     resp.files.forEach(this.handleFileChange, this);
   }
@@ -194,7 +189,7 @@ WatchmanWatcher.prototype.handleEndEvent = function() {
 }
 
 /**
- * Dispatches the event.
+ * Dispatches an event.
  *
  * @param {string} eventType
  * @param {string} filepath
