@@ -2,9 +2,8 @@
 
 var fs = require('fs');
 var path = require('path');
-var assert = require('assert');
 var common = require('./common');
-var watchman = require('fb-watchman');
+var watchmanClient = require('./watchman_client');
 var EventEmitter = require('events').EventEmitter;
 var RecrawlWarning = require('./utils/recrawl-warning-dedupe');
 
@@ -16,7 +15,6 @@ var CHANGE_EVENT = common.CHANGE_EVENT;
 var DELETE_EVENT = common.DELETE_EVENT;
 var ADD_EVENT = common.ADD_EVENT;
 var ALL_EVENT = common.ALL_EVENT;
-var SUB_NAME = 'sane-sub';
 
 /**
  * Export `WatchmanWatcher` class.
@@ -27,7 +25,7 @@ module.exports = WatchmanWatcher;
 /**
  * Watches `dir`.
  *
- * @class PollWatcher
+ * @class WatchmanWatcher
  * @param String dir
  * @param {Object} opts
  * @public
@@ -46,143 +44,91 @@ WatchmanWatcher.prototype.__proto__ = EventEmitter.prototype;
  *
  * @private
  */
-
 WatchmanWatcher.prototype.init = function() {
-  if (this.client) {
-    this.client.removeAllListeners();
-  }
-
   var self = this;
-  this.client = new watchman.Client();
-  this.client.on('error', function(error) {
-    self.emit('error', error);
-  });
-  this.client.on('subscription', this.handleChangeEvent.bind(this));
-  this.client.on('end', function() {
-    console.warn('[sane] Warning: Lost connection to watchman, reconnecting..');
-    self.init();
-  });
-
-  this.watchProjectInfo = null;
-
-  function getWatchRoot() {
-    return self.watchProjectInfo ? self.watchProjectInfo.root : self.root;
+  
+  if (this.client) {
+    this.client = null;
   }
 
-  function onCapability(error, resp) {
-    if (handleError(self, error)) {
-      // The Watchman watcher is unusable on this system, we cannot continue
-      return;
-    }
+  // Create the 'options' structure for subscribe.
+  // NOTE: this leaves out two things from the options, that
+  // will be added by the WatchmanClient.
+  //   - the 'since' field. This will be added in WC based on
+  //     doing its own call to 'clock' for this watch.
+  //   - the 'relative_root' field. We're hiding the existence
+  //     of 'watch' vs 'watch-project' in the WatchmanClient, so
+  //     this level doesn't even know about it.
 
-    handleWarning(resp);
+  watchmanClient.getClient()
+    .then((client) => {
+      self.client = client;
 
-    self.capabilities = resp.capabilities;
+      return self.client.subscribe(self, self.root)
+        .then((resp) => {
+          handleWarning(resp);
+          self.emit('ready');
+        });
+    })
+    .catch((error) => handleError(self, error));
+};
 
-    if (self.capabilities.relative_root) {
-      self.client.command(['watch-project', getWatchRoot()], onWatchProject);
+/**
+ * Called by WatchmanClient to create the options, either during initial 'subscribe'
+ * or to recalculate after a disconnect+reconnect ('end' event), in case 'wildmatch'
+ * changes values in the meantime. Note that we are leaving out the 'since' and 
+ * 'relative_root' options. Those are dealt with inside the WatchmanClient--this 
+ * watcher doesn't really need to even know about them.
+ */
+WatchmanWatcher.prototype.createOptions = function() {
+  var self = this;
+
+  let options = {
+    fields: ['name', 'exists', 'new']
+  };
+
+  // If the server has the wildmatch capability available it supports
+  // the recursive **/*.foo style match and we can offload our globs
+  // to the watchman server.  This saves both on data size to be
+  // communicated back to us and compute for evaluating the globs
+  // in our node process.
+  if (this.client.wildmatch) {
+    if (this.globs.length === 0) {
+      if (!this.dot) {
+        // Make sure we honor the dot option if even we're not using globs.
+        options.expression = [
+          'match',
+          '**',
+          'wholename',
+          {
+            includedotfiles: false,
+          },
+        ];
+      }
     } else {
-      self.client.command(['watch', getWatchRoot()], onWatch);
-    }
-  }
-
-  function onWatchProject(error, resp) {
-    if (handleError(self, error)) {
-      return;
-    }
-
-    handleWarning(resp);
-
-    self.watchProjectInfo = {
-      root: resp.watch,
-      relativePath: resp.relative_path ? resp.relative_path : '',
-    };
-
-    self.client.command(['clock', getWatchRoot()], onClock);
-  }
-
-  function onWatch(error, resp) {
-    if (handleError(self, error)) {
-      return;
-    }
-
-    handleWarning(resp);
-
-    self.client.command(['clock', getWatchRoot()], onClock);
-  }
-
-  function onClock(error, resp) {
-    if (handleError(self, error)) {
-      return;
-    }
-
-    handleWarning(resp);
-
-    var options = {
-      fields: ['name', 'exists', 'new'],
-      since: resp.clock,
-    };
-
-    // If the server has the wildmatch capability available it supports
-    // the recursive **/*.foo style match and we can offload our globs
-    // to the watchman server.  This saves both on data size to be
-    // communicated back to us and compute for evaluating the globs
-    // in our node process.
-    if (self.capabilities.wildmatch) {
-      if (self.globs.length === 0) {
-        if (!self.dot) {
-          // Make sure we honor the dot option if even we're not using globs.
-          options.expression = [
-            'match',
-            '**',
-            'wholename',
-            {
-              includedotfiles: false,
-            },
-          ];
-        }
-      } else {
-        options.expression = ['anyof'];
-        for (var i in self.globs) {
-          options.expression.push([
-            'match',
-            self.globs[i],
-            'wholename',
-            {
-              includedotfiles: self.dot,
-            },
-          ]);
-        }
+      options.expression = ['anyof'];
+      for (var i in this.globs) {
+        options.expression.push([
+          'match',
+          this.globs[i],
+          'wholename',
+          {
+            includedotfiles: this.dot,
+          },
+        ]);
       }
     }
-
-    if (self.capabilities.relative_root) {
-      options.relative_root = self.watchProjectInfo.relativePath;
-    }
-
-    self.client.command(
-      ['subscribe', getWatchRoot(), SUB_NAME, options],
-      onSubscribe
-    );
   }
 
-  function onSubscribe(error, resp) {
-    if (handleError(self, error)) {
-      return;
-    }
+  return options;
+}
 
-    handleWarning(resp);
-
-    self.emit('ready');
-  }
-
-  self.client.capabilityCheck(
-    {
-      optional: ['wildmatch', 'relative_root'],
-    },
-    onCapability
-  );
-};
+/**
+ * Called by WatchmanClient when it receives an error from the watchman server.
+ */
+WatchmanWatcher.prototype.handleErrorEvent = function(error) {
+  this.emit('error', error);
+}
 
 /**
  * Handles a change event coming from the subscription.
@@ -192,7 +138,7 @@ WatchmanWatcher.prototype.init = function() {
  */
 
 WatchmanWatcher.prototype.handleChangeEvent = function(resp) {
-  assert.equal(resp.subscription, SUB_NAME, 'Invalid subscription event.');
+  console.log("WW.handleChangeEvent for resp.subscription [" + resp.subscription + "]");
   if (Array.isArray(resp.files)) {
     resp.files.forEach(this.handleFileChange, this);
   }
@@ -210,22 +156,11 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
   var absPath;
   var relativePath;
 
-  if (this.capabilities.relative_root) {
-    relativePath = changeDescriptor.name;
-    absPath = path.join(
-      this.watchProjectInfo.root,
-      this.watchProjectInfo.relativePath,
-      relativePath
-    );
-  } else {
-    absPath = path.join(this.root, changeDescriptor.name);
-    relativePath = changeDescriptor.name;
-  }
+  relativePath = changeDescriptor.name;
+  absPath = path.join(this.root, relativePath);
 
-  if (
-    !(self.capabilities.wildmatch && !this.hasIgnore) &&
-    !common.isFileIncluded(this.globs, this.dot, this.doIgnore, relativePath)
-  ) {
+  if (!(this.client.wildmatch && !this.hasIgnore) &&
+      !common.isFileIncluded(this.globs, this.dot, this.doIgnore, relativePath)) {
     return;
   }
 
@@ -248,10 +183,17 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
       // Change event on dirs are mostly useless.
       if (!(eventType === CHANGE_EVENT && stat.isDirectory())) {
         self.emitEvent(eventType, relativePath, self.root, stat);
+        // For quick test
+        self.client.onEnd();
       }
     });
   }
 };
+
+WatchmanWatcher.prototype.handleEndEvent = function() {
+  console.warn('[sane] Warning: Lost connection to watchman, reconnecting..');
+  this.init();
+}
 
 /**
  * Dispatches the event.
@@ -263,12 +205,7 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
  * @private
  */
 
-WatchmanWatcher.prototype.emitEvent = function(
-  eventType,
-  filepath,
-  root,
-  stat
-) {
+WatchmanWatcher.prototype.emitEvent = function(eventType, filepath, root, stat) {
   this.emit(eventType, filepath, root, stat);
   this.emit(ALL_EVENT, eventType, filepath, root, stat);
 };
