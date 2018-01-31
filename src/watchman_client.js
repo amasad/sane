@@ -59,11 +59,10 @@ WatchmanClient.prototype.getClient = function(watchmanBinaryPath) {
                                        : {});
 
       // reset the relevant local values
-
-      try {
-        client.capabilityCheck(
-          {optional: ['wildmatch', 'relative_root']},
-          (error, resp) => {
+      client.capabilityCheck(
+        {optional: ['wildmatch', 'relative_root']},
+        (error, resp) => {
+          try {
             if (error) {
               reject(error);
             } else {
@@ -75,12 +74,14 @@ WatchmanClient.prototype.getClient = function(watchmanBinaryPath) {
               this._setupClientListeners();
               resolve(this);
             }
+          } catch (err) {
+            // In case we get something weird in the block using 'resp'.
+            // XXX We could also just remove the try/catch if we believe
+            // the resp stuff should always work, but just in case...
+            throw err;
           }
-        );
-      } catch (err) {
-        console.error("Client capabilityCheck threw error somehow: " + err);
-        // XXX Do something here to throw an error or reject?
-      }
+        }
+      )
     });
   }
 
@@ -91,6 +92,10 @@ WatchmanClient.prototype.getClient = function(watchmanBinaryPath) {
  * Called from WatchmanWatcher (or this object during reconnect) to create
  * a watcherInfo entry in our _watcherMap and issue a 'subscribe' to the
  * watchman.Client, to be handled in this object.
+ *
+ * Note: it is possible that the _clock and _subscribe reject for an error.
+ * Leaving it to WatchmanWatcher to handle that error in whatever way they
+ * see fit.
  */
 WatchmanClient.prototype.subscribe = function(watchmanWatcher, root) {
 
@@ -99,12 +104,7 @@ WatchmanClient.prototype.subscribe = function(watchmanWatcher, root) {
   
   return this._watch(subscription, root)
     .then((resp) => this._clock(subscription))
-    .then((data) => this._subscribe(subscription))
-    .catch((error) => {
-      console.error("Caught error in subscribe for watchmanWatcher root " + root);
-      console.error(error);
-      return Promise.reject(error); // XXX is this right? Or do I just do 'reject(error)'?
-    });
+    .then((data) => this._subscribe(subscription));
 };
 
 /**
@@ -195,8 +195,7 @@ WatchmanClient.prototype._createWatcherInfo = function(watchmanWatcher) {
  * Find an existing watcherInfo instance.
  */
 WatchmanClient.prototype._getWatcherInfo = function(subscription) {
-  var watcherInfo = this._watcherMap[subscription];
-  return watcherInfo;
+  return this._watcherMap[subscription];
 }
 
 /**
@@ -207,7 +206,7 @@ WatchmanClient.prototype._getWatcherInfo = function(subscription) {
  */
 WatchmanClient.prototype._watch = function(subscription, root) {
   
-  let promise = new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     let watcherInfo = this._getWatcherInfo(subscription);
 
     if (this._relative_root) { 
@@ -236,8 +235,6 @@ WatchmanClient.prototype._watch = function(subscription, root) {
                            });
     }
   });
-  
-  return promise;
 };
   
 /**
@@ -245,7 +242,7 @@ WatchmanClient.prototype._watch = function(subscription, root) {
  * option during 'subscribe'.
  */
 WatchmanClient.prototype._clock = function(subscription) {
-  let promise = new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     let watcherInfo = this._getWatcherInfo(subscription);
 
     this._client.command(['clock', watcherInfo.root],
@@ -258,8 +255,6 @@ WatchmanClient.prototype._clock = function(subscription) {
                            }
                          });
   });
-
-  return promise;
 };
 
 /** 
@@ -267,7 +262,7 @@ WatchmanClient.prototype._clock = function(subscription) {
  * a subscription.
  */
 WatchmanClient.prototype._subscribe = function(subscription) {
-  let promise = new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     let watcherInfo = this._getWatcherInfo(subscription);
 
     // create the 'bare' options w/o 'since' or relative_root.
@@ -296,8 +291,6 @@ WatchmanClient.prototype._subscribe = function(subscription) {
                            }
                          });
   });
-  
-  return promise;
 }
 
 /**
@@ -306,6 +299,7 @@ WatchmanClient.prototype._subscribe = function(subscription) {
  */
 WatchmanClient.prototype._onSubscription = function(resp) {
   let watcherInfo = this._getWatcherInfo(resp.subscription);
+
   if (watcherInfo) {
     watcherInfo.watchmanWatcher.handleChangeEvent(resp);
   } else {
@@ -341,14 +335,14 @@ WatchmanClient.prototype._onEnd = function() {
   let oldWatcherInfos = Object.values(this._watcherMap);
   let watchmanBinaryPath = this._watchmanBinaryPath;
 
-  clearLocalVars();
+  this._clearLocalVars();
   
   this.getClient(watchmanBinaryPath)
     .then(
       (client) => {
         let promises = oldWatcherInfos.map((watcherInfo) =>
-                                           subscribe(watcherInfo.watchmanWatcher,
-                                                     watcherInfo.watchmanWatcher.root));
+                                           this.subscribe(watcherInfo.watchmanWatcher,
+                                                          watcherInfo.watchmanWatcher.root));
         Promise.all(promises)
           .then(
             (resultArray) => {
