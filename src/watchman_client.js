@@ -153,7 +153,7 @@ WatchmanClient.prototype._clearLocalVars = function() {
   this._wildmatch = false;
   this._relative_root = false;
   this._subscriptionId = 1;
-  this._watcherMap = {};
+  this._watcherMap = Object.create(null);
   this._watchmanBinaryPath = null;
 };
 
