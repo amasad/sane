@@ -34,7 +34,7 @@ module.exports = WatchmanWatcher;
 function WatchmanWatcher(dir, opts) {
   common.assignOptions(this, opts);
   this.root = path.resolve(dir);
-  this.init();
+  this._init();
 }
 
 WatchmanWatcher.prototype.__proto__ = EventEmitter.prototype;
@@ -44,11 +44,9 @@ WatchmanWatcher.prototype.__proto__ = EventEmitter.prototype;
  *
  * @private
  */
-WatchmanWatcher.prototype.init = function() {
-  var self = this;
-  
-  if (this.client) {
-    this.client = null;
+WatchmanWatcher.prototype._init = function() {
+  if (this._client) {
+    this._client = null;
   }
 
   // Create/setup the WatchmanClient singleton, passing in our watchmanPath
@@ -56,15 +54,15 @@ WatchmanWatcher.prototype.init = function() {
   // setup so that we will receive calls to handleChangeEvent when files change.
   watchmanClient.getClient(this.watchmanPath)
     .then((client) => {
-      self.client = client;
+      this._client = client;
 
-      return self.client.subscribe(self, self.root)
+      return this._client.subscribe(this, this.root)
         .then((resp) => {
-          handleWarning(resp);
-          self.emit('ready');
+          this._handleWarning(resp);
+          this.emit('ready');
         });
     })
-    .catch((error) => handleError(self, error));
+    .catch((error) => this._handleError(error));
 };
 
 /**
@@ -74,8 +72,6 @@ WatchmanWatcher.prototype.init = function() {
  * WatchmanClient.
  */
 WatchmanWatcher.prototype.createOptions = function() {
-  var self = this;
-
   let options = {
     fields: ['name', 'exists', 'new']
   };
@@ -85,7 +81,7 @@ WatchmanWatcher.prototype.createOptions = function() {
   // to the watchman server.  This saves both on data size to be
   // communicated back to us and compute for evaluating the globs
   // in our node process.
-  if (this.client.wildmatch) {
+  if (this._client.wildmatch) {
     if (this.globs.length === 0) {
       if (!this.dot) {
         // Make sure we honor the dot option if even we're not using globs.
@@ -114,7 +110,7 @@ WatchmanWatcher.prototype.createOptions = function() {
   }
 
   return options;
-}
+};
 
 /**
  * Called by WatchmanClient when it receives an error from the watchman daemon.
@@ -123,7 +119,7 @@ WatchmanWatcher.prototype.createOptions = function() {
  */
 WatchmanWatcher.prototype.handleErrorEvent = function(error) {
   this.emit('error', error);
-}
+};
 
 /**
  * Called by the WatchmanClient when it is notified about a file change in
@@ -147,29 +143,28 @@ WatchmanWatcher.prototype.handleChangeEvent = function(resp) {
  */
 
 WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
-  var self = this;
   var absPath;
   var relativePath;
 
   relativePath = changeDescriptor.name;
   absPath = path.join(this.root, relativePath);
 
-  if (!(this.client.wildmatch && !this.hasIgnore) &&
+  if (!(this._client.wildmatch && !this.hasIgnore) &&
       !common.isFileIncluded(this.globs, this.dot, this.doIgnore, relativePath)) {
     return;
   }
 
   if (!changeDescriptor.exists) {
-    self.emitEvent(DELETE_EVENT, relativePath, self.root);
+    this.emitEvent(DELETE_EVENT, relativePath, this.root);
   } else {
-    fs.lstat(absPath, function(error, stat) {
+    fs.lstat(absPath, (error, stat) => {
       // Files can be deleted between the event and the lstat call
       // the most reliable thing to do here is to ignore the event.
       if (error && error.code === 'ENOENT') {
         return;
       }
 
-      if (handleError(self, error)) {
+      if (this._handleError(error)) {
         return;
       }
 
@@ -177,16 +172,11 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
 
       // Change event on dirs are mostly useless.
       if (!(eventType === CHANGE_EVENT && stat.isDirectory())) {
-        self.emitEvent(eventType, relativePath, self.root, stat);
+        this.emitEvent(eventType, relativePath, this.root, stat);
       }
     });
   }
 };
-
-WatchmanWatcher.prototype.handleEndEvent = function() {
-  console.warn('[sane] Warning: Lost connection to watchman, reconnecting..');
-  this.init();
-}
 
 /**
  * Dispatches an event.
@@ -211,8 +201,7 @@ WatchmanWatcher.prototype.emitEvent = function(eventType, filepath, root, stat) 
  */
 
 WatchmanWatcher.prototype.close = function(callback) {
-  this.client.removeAllListeners();
-  this.client.end();
+  this._client.closeWatcher();
   callback && callback(null, true);
 };
 
@@ -224,14 +213,14 @@ WatchmanWatcher.prototype.close = function(callback) {
  * @private
  */
 
-function handleError(self, error) {
+WatchmanWatcher.prototype._handleError = function(error) {
   if (error != null) {
-    self.emit('error', error);
+    this.emit('error', error);
     return true;
   } else {
     return false;
   }
-}
+};
 
 /**
  * Handles a warning in the watchman resp object.
@@ -240,7 +229,7 @@ function handleError(self, error) {
  * @private
  */
 
-function handleWarning(resp) {
+WatchmanWatcher.prototype._handleWarning = function(resp) {
   if ('warning' in resp) {
     if (RecrawlWarning.isRecrawlWarningDupe(resp.warning)) {
       return true;
@@ -250,4 +239,4 @@ function handleWarning(resp) {
   } else {
     return false;
   }
-}
+};
