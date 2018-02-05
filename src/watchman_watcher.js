@@ -195,6 +195,9 @@ WatchmanWatcher.prototype.init = function() {
 
 WatchmanWatcher.prototype.handleChangeEvent = function(resp) {
   assert.equal(resp.subscription, SUB_NAME, 'Invalid subscription event.');
+  if (resp.is_fresh_instance) {
+    this.emit('fresh_instance');
+  }
   if (Array.isArray(resp.files)) {
     resp.files.forEach(this.handleFileChange, this);
   }
