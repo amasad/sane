@@ -49,20 +49,20 @@ WatchmanWatcher.prototype._init = function() {
     this._client = null;
   }
 
-  // Create/setup the WatchmanClient singleton, passing in our watchmanPath
-  // if we have one (optional). Then subscribe, which will do the appropriate
-  // setup so that we will receive calls to handleChangeEvent when files change.
-  watchmanClient.getClient(this.watchmanPath)
-    .then((client) => {
-      this._client = client;
-
-      return this._client.subscribe(this, this.root)
-        .then((resp) => {
-          this._handleWarning(resp);
-          this.emit('ready');
-        });
-    })
-    .catch((error) => this._handleError(error));
+  // Get the WatchmanClient instance corresponding to our watchmanPath (or nothing).
+  // Then subscribe, which will do the appropriate setup so that we will receive
+  // calls to handleChangeEvent when files change.
+  this._client = watchmanClient.getInstance(this.watchmanPath);
+  
+  return this._client.subscribe(this, this.root)
+    .then(
+      (resp) => {
+        this._handleWarning(resp);
+        this.emit('ready');
+      },
+      (error) => {
+        this._handleError(error);
+      });
 };
 
 /**

@@ -7,7 +7,7 @@ var watchman = require('fb-watchman');
  */
 
 /**
- * Singleton that provides a public API for a single connection to a watchman instance for 'sane'.
+ * Singleton that provides a public API for a connection to a watchman instance for 'sane'.
  * It tries to abstract/remove as much of the boilerplate processing as necessary
  * from WatchmanWatchers that use it. In particular, they have no idea whether
  * we're using 'watch-project' or 'watch', what the 'project root' is when
@@ -17,94 +17,55 @@ var watchman = require('fb-watchman');
  * the WatchmanClient, ultimately making this the only object listening directly
  * to watchman.Client, then forwarding appropriately (via the known-name methods) to 
  * the relevant WatchmanWatcher(s).
+ * 
+ * Note: WatchmanWatcher also added a 'watchmanPath' option for use with the sane CLI.
+ * Because of that, we actually need a map of watchman binary path to WatchmanClient instance.
+ * That is set up in getInstance(). Once the WatchmanWatcher has a given client, it doesn't
+ * change.
  *
  * @class WatchmanClient
- * @param String dir
- * @param {Object} opts
+ * @param String watchmanBinaryPath 
  * @public
  */
 
-function WatchmanClient() {
+function WatchmanClient(watchmanBinaryPath) {
 
   // define/clear some local state. The properties will be initialized
-  // in getClient(). This is also called again in _onEnd when
-  // trying to reestablish connection to watchman.Client.
+  // in _handleClientAndCheck(). This is also called again in _onEnd when
+  // trying to reestablish connection to watchman.
   this._clearLocalVars(); 
 
+  this._watchmanBinaryPath = watchmanBinaryPath;
   this._clientListeners = null;  // direct listeners from here to watchman.Client.
-
-  // we may want to call 'getClient()' and return a promise instead later,
-  // but for now we'll assume the WatchmanWatchers will not use wildmatch
-  // until they've done a getClient to retrieve the instance, so the
-  // capabilityCheck call is done.
-  Object.defineProperty(this, 'wildmatch', {
-    get() { return this._wildmatch; }
-  });
 }
 
-/**
- * Set up the connection to the watchman client. If the optional
- * value watchmanBinaryPath is passed in AND we're not already in the
- * middle of setting up the client, use that as the path to the
- * binary. In either case, return a promise that will be fulfilled
- * when the client has been set up and capabilities have been returned.
- */
-WatchmanClient.prototype.getClient = function(watchmanBinaryPath) {
-  
-  if (!this._clientPromise) {
-    this._clientPromise = new Promise((resolve, reject) => {
-
-      let client = new watchman.Client(watchmanBinaryPath
-                                       ? { watchmanBinaryPath: watchmanBinaryPath}
-                                       : {});
-
-      // reset the relevant local values
-      client.capabilityCheck(
-        {optional: ['wildmatch', 'relative_root']},
-        (error, resp) => {
-          try {
-            if (error) {
-              reject(error);
-            } else {
-              this._watchmanBinaryPath = watchmanBinaryPath;
-              this._wildmatch = resp.capabilities.wildmatch;
-              this._relative_root = resp.capabilities.relative_root;
-              this._client = client;
-
-              this._setupClientListeners();
-              resolve(this);
-            }
-          } catch (err) {
-            // In case we get something weird in the block using 'resp'.
-            // XXX We could also just remove the try/catch if we believe
-            // the resp stuff should always work, but just in case...
-            throw err;
-          }
-        }
-      )
-    });
-  }
-
-  return this._clientPromise;
-};
+// Define 'wildmatch' property, which must be available when we call the
+// WatchmanWatcher.createOptions() method. 
+Object.defineProperty(WatchmanClient.prototype, 'wildmatch', {
+  get() { return this._wildmatch; }
+});
 
 /**
- * Called from WatchmanWatcher (or this object during reconnect) to create
+ * Called from WatchmanWatcher (or WatchmanClient during reconnect) to create
  * a watcherInfo entry in our _watcherMap and issue a 'subscribe' to the
- * watchman.Client, to be handled in this object.
- *
- * Note: it is possible that the _clock and _subscribe reject for an error.
- * Leaving it to WatchmanWatcher to handle that error in whatever way they
- * see fit.
+ * watchman.Client, to be handled here.
  */
 WatchmanClient.prototype.subscribe = function(watchmanWatcher, root) {
-
-  let watcherInfo = this._createWatcherInfo(watchmanWatcher);
-  let subscription = watcherInfo.subscription;
+  let subscription;
+  let watcherInfo;
   
-  return this._watch(subscription, root)
+  return this._setupClient()
+    .then(() => {
+      watcherInfo = this._createWatcherInfo(watchmanWatcher);
+      subscription = watcherInfo.subscription;
+      return this._watch(subscription, root);
+    })
     .then((resp) => this._clock(subscription))
-    .then((data) => this._subscribe(subscription));
+    .then((data) => this._subscribe(subscription))
+    .catch((error) => {
+      console.error("Failed creating subscription for root " + root);
+      throw error;
+    });
 };
 
 /**
@@ -132,11 +93,148 @@ WatchmanClient.prototype.closeWatcher = function(watchmanWatcher) {
       numWatchers--;
 
       if (numWatchers === 0) {
-        this._clearLocalVars();
+        this._clearLocalVars();  // nobody watching, so shut the watchman.Client down.
       }
     }
   }
 };
+
+/**
+ * Simple backoff-time iterator. next() returns times in ms.
+ * When it's at the last value, it stays there until reset()
+ * is called.
+ */
+WatchmanClient.prototype._backoffTimes = {
+  _times: [0, 1000, 5000, 10000, 60000],
+
+  _next: 0,
+
+  next() {
+    let val = this._times[_next];
+    if (this._next < this._times.length - 1) {
+      this._next++;
+    }
+    return val;
+  },
+
+  reset() {
+    this._next = 0;
+  }
+}
+
+/**
+ * Set up the connection to the watchman client. Return a promise
+ * that is fulfilled when we have a client that has finished the
+ * capabilityCheck. 
+ */
+WatchmanClient.prototype._setupClient = function() {
+  if (!this._clientPromise) {
+    this._clientPromise = new Promise((resolve, reject) => {
+      this._handleClientAndCheck(resolve, reject);
+    });
+  }
+
+  return this._clientPromise;
+};
+
+/**
+ * Handle the process of creating a client and doing a capability check and
+ * getting a valid response, then setting up local data based on that.
+ *
+ * This is split from _setupClient and _createClientAndCheck so it can
+ * provide the backoff handling needed during attempts to reconnect.
+ */
+WatchmanClient.prototype._handleClientAndCheck = function(resolve, reject) {
+  this._createClientAndCheck().then(
+    (value) => {
+      let {resp, client} = value;
+
+      this._wildmatch = resp.capabilities.wildmatch;
+      this._relative_root = resp.capabilities.relative_root;
+      this._client = client;
+
+      client.on('subscription', this._onSubscription.bind(this));
+      client.on('error', this._onError.bind(this));
+      client.on('end', this._onEnd.bind(this));
+
+      this._backoffTimes.reset();
+
+      resolve(this);
+    },
+    (error) => {
+      // create & capability check failed in any of several ways,
+      // do the retry with backoff.
+
+      // XXX May want to change this later to actually reject/terminate with
+      // an error in certain of the inner errors (e.g. when we
+      // can figure out the server is definitely not coming
+      // back, or something else is not recoverable by just waiting).
+      // Could also decide after N retries to just quit.
+
+      let backoffMillis = this._backoffTimes.next();
+
+      // XXX may want to fact we'll attempt reconnect in backoffMillis ms.
+      setTimeout(() => {
+        this._handleClientAndCheck(resolve, reject);
+      }, backoffMillis);
+    }
+  );
+}
+
+/**
+ * Create a promise that will only be fulfilled when either
+ * we correctly get capabilities back or we get an 'error' or 'end'
+ * callback, indicating a problem. The caller _handleClientAndCheck
+ * then deals with providing a retry and backoff mechanism.
+ */
+WatchmanClient.prototype._createClientAndCheck = function() {
+  return new Promise((resolve, reject) => {
+    
+    let client;
+    
+    try {
+      client = new watchman.Client(this._watchmanBinaryPath
+                                     ? { watchmanBinaryPath: this._watchmanBinaryPath}
+                                   : {});
+    } catch(error) {
+      // if we're here, either the binary path is bad or something
+      // else really bad happened. The client doesn't even attempt
+      // to connect until we send it a command, though.
+      reject(error);
+      return;
+    }
+
+    client.on('error', (error) => {
+      client.removeAllListeners();
+      reject(error);
+    });
+
+    client.on('end', () => {
+      client.removeAllListeners();
+      reject(new Error('Disconnected during client capabilities check'));
+    });
+
+    client.capabilityCheck(
+      {optional: ['wildmatch', 'relative_root']},
+      (error, resp) => {
+        try {
+          client.removeAllListeners();
+
+          if (error) {
+            reject(error);
+          } else {
+            resolve({resp, client});
+          }
+        } catch (err) {
+          // In case we get something weird in the block using 'resp'.
+          // XXX We could also just remove the try/catch if we believe
+          // the resp stuff should always work, but just in case...
+          reject(err);
+        }
+      }
+    )
+  });
+}
 
 /**
  * Clear out local state at the beginning and if we end up
@@ -154,20 +252,11 @@ WatchmanClient.prototype._clearLocalVars = function() {
   this._relative_root = false;
   this._subscriptionId = 1;
   this._watcherMap = Object.create(null);
-  this._watchmanBinaryPath = null;
+
+  // Note that we do not clear _clientListeners or _watchmanBinaryPath.
 };
 
-/**
- * This singleton is the only object directly listening to our
- * watchman.Client. Set up our listeners.
- */
-WatchmanClient.prototype._setupClientListeners = function() {
-  this._client.on('subscription', this._onSubscription.bind(this));
-  this._client.on('error', this._onError.bind(this));
-  this._client.on('end', this._onEnd.bind(this));
-};
-
-WatchmanClient.prototype._getSubscription = function() {
+WatchmanClient.prototype._genSubscription = function() {
   let val = 'sane_' + this._subscriptionId++;
   return val;
 };
@@ -178,7 +267,7 @@ WatchmanClient.prototype._getSubscription = function() {
  */
 WatchmanClient.prototype._createWatcherInfo = function(watchmanWatcher) {
   let watcherInfo = {
-    subscription: this._getSubscription(),
+    subscription: this._genSubscription(),
     watchmanWatcher: watchmanWatcher,           
     root: null,                      // set during 'watch' or 'watch-project'
     relativePath: null,              // same
@@ -301,6 +390,8 @@ WatchmanClient.prototype._onSubscription = function(resp) {
   let watcherInfo = this._getWatcherInfo(resp.subscription);
 
   if (watcherInfo) {
+    // we're assuming the watchmanWatcher does not throw during
+    // handling of the change event.
     watcherInfo.watchmanWatcher.handleChangeEvent(resp);
   } else {
     // Note it in the log, but otherwise ignore it
@@ -312,7 +403,9 @@ WatchmanClient.prototype._onSubscription = function(resp) {
 
 /**
  * Handle the 'error' event by forwarding to the
- * handler on the relevant WatchmanWatcher.
+ * handler on all WatchmanWatchers (errors are generally during processing
+ * a particular command, but it's not given which command that was, or
+ * which subscription it belonged to).
  */
 WatchmanClient.prototype._onError = function(error) {
   Object.values(this._watcherMap).forEach((watcherInfo) =>
@@ -331,13 +424,11 @@ WatchmanClient.prototype._onEnd = function() {
   console.warn('[sane.WatchmanClient] Warning: Lost connection to watchman, reconnecting..');
 
   // Hold the old watcher map so we use it to recreate all subscriptions.
-  // Hold the old watchmanBinaryPath because it should not have changed.
   let oldWatcherInfos = Object.values(this._watcherMap);
-  let watchmanBinaryPath = this._watchmanBinaryPath;
 
   this._clearLocalVars();
   
-  this.getClient(watchmanBinaryPath)
+  this._setupClient()
     .then(
       (client) => {
         let promises = oldWatcherInfos.map((watcherInfo) =>
@@ -349,8 +440,8 @@ WatchmanClient.prototype._onEnd = function() {
               console.log('[sane.WatchmanClient]: Reconnected to watchman');
             },
             (error) => {
-              console.error("Reconnected to watchman, but failed to reestablish " +
-                            "at least one subscription, cannot continue");
+              console.error("[sane.WatchmanClient]: Reconnected to watchman, but failed to " +
+                            "reestablish at least one subscription, cannot continue");
               console.error(error);
               oldWatcherInfos.forEach((watcherInfo) =>
                                       watcherInfo.watchmanWatcher.handleErrorEvent(error));
@@ -360,11 +451,42 @@ WatchmanClient.prototype._onEnd = function() {
             });
       },
       (error) => {
-        console.error('Lost connection to watchman, reconnect failed, cannot continue');
+        console.error('[sane.WatchmanClient]: Lost connection to watchman, ' +
+                      'reconnect failed, cannot continue');
         console.error(error);
         oldWatcherInfos.forEach((watcherInfo) =>
                                 watcherInfo.watchmanWatcher.handleErrorEvent(error));
       });
 };
 
-module.exports = new WatchmanClient()
+
+module.exports = {
+
+  /**
+   * Create/retrieve an instance of the WatchmanClient. See the header comment
+   * about the map of client instances, one per watchmanPath.
+   * Export the getInstance method by itself so the callers cannot do anything until
+   * they get a real WatchmanClient instance here.
+   */
+  getInstance: function(watchmanBinaryPath) {
+    let clientMap = WatchmanClient.prototype._clientMap;
+
+    if (!clientMap) {
+      clientMap = Object.create(null);
+      WatchmanClient.prototype._clientMap = clientMap;
+    }
+
+    if (watchmanBinaryPath == undefined || watchmanBinaryPath === null) {
+      watchmanBinaryPath = "";
+    }
+
+    let watchmanClient = clientMap[watchmanBinaryPath];
+
+    if (!watchmanClient) {
+      watchmanClient = new WatchmanClient(watchmanBinaryPath);
+      clientMap[watchmanBinaryPath] = watchmanClient;
+    }
+
+    return watchmanClient;
+  }
+}
