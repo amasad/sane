@@ -61,15 +61,15 @@ For the ignored options, see [anymatch](https://github.com/es128/anymatch).
 
 ### sane.NodeWatcher(dir, options)
 
-The default watcher class. Uses `fs.watch` under the hood, and takes the same options as `sane(options, dir)`.
+The default watcher class. Uses `fs.watch` under the hood, and takes the same options as `sane(dir, options)`.
 
 ### sane.WatchmanWatcher(dir, options)
 
-The watchman watcher class. Takes the same options as `sane(options, dir)`.
+The watchman watcher class. Takes the same options as `sane(dir, options)`.
 
 ### sane.PollWatcher(dir, options)
 
-The polling watcher class. Takes the same options as `sane(options, dir)` with the addition of:
+The polling watcher class. Takes the same options as `sane(dir, options)` with the addition of:
 
 * interval: indicates how often the files should be polled. (passed to fs.watchFile)
 
