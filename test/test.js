@@ -183,9 +183,7 @@ function harness(mode) {
       });
     });
 
-    it('changing, removing, deleting should emit the "all" event', function(
-      done
-    ) {
+    it('changing, removing, deleting should emit the "all" event', function(done) {
       var toChange = jo(testdir, 'file_4');
       var toDelete = jo(testdir, 'file_5');
       var toAdd = jo(testdir, 'file_x' + Math.floor(Math.random() * 10000));
