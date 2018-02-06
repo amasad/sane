@@ -2,9 +2,8 @@
 
 var fs = require('fs');
 var path = require('path');
-var assert = require('assert');
 var common = require('./common');
-var watchman = require('fb-watchman');
+var watchmanClient = require('./watchman_client');
 var EventEmitter = require('events').EventEmitter;
 var RecrawlWarning = require('./utils/recrawl-warning-dedupe');
 
@@ -16,7 +15,6 @@ var CHANGE_EVENT = common.CHANGE_EVENT;
 var DELETE_EVENT = common.DELETE_EVENT;
 var ADD_EVENT = common.ADD_EVENT;
 var ALL_EVENT = common.ALL_EVENT;
-var SUB_NAME = 'sane-sub';
 
 /**
  * Export `WatchmanWatcher` class.
@@ -27,7 +25,7 @@ module.exports = WatchmanWatcher;
 /**
  * Watches `dir`.
  *
- * @class PollWatcher
+ * @class WatchmanWatcher
  * @param String dir
  * @param {Object} opts
  * @public
@@ -36,7 +34,7 @@ module.exports = WatchmanWatcher;
 function WatchmanWatcher(dir, opts) {
   common.assignOptions(this, opts);
   this.root = path.resolve(dir);
-  this.init();
+  this._init();
 }
 
 WatchmanWatcher.prototype.__proto__ = EventEmitter.prototype;
@@ -46,155 +44,92 @@ WatchmanWatcher.prototype.__proto__ = EventEmitter.prototype;
  *
  * @private
  */
-
-WatchmanWatcher.prototype.init = function() {
-  if (this.client) {
-    this.client.removeAllListeners();
+WatchmanWatcher.prototype._init = function() {
+  if (this._client) {
+    this._client = null;
   }
 
-  var self = this;
-  this.client = new watchman.Client(
-    this.watchmanPath ? { watchmanBinaryPath: this.watchmanPath } : {}
-  );
-  this.client.on('error', function(error) {
-    self.emit('error', error);
-  });
-  this.client.on('subscription', this.handleChangeEvent.bind(this));
-  this.client.on('end', function() {
-    console.warn('[sane] Warning: Lost connection to watchman, reconnecting..');
-    self.init();
-  });
-
-  this.watchProjectInfo = null;
-
-  function getWatchRoot() {
-    return self.watchProjectInfo ? self.watchProjectInfo.root : self.root;
-  }
-
-  function onCapability(error, resp) {
-    if (handleError(self, error)) {
-      // The Watchman watcher is unusable on this system, we cannot continue
-      return;
-    }
-
-    handleWarning(resp);
-
-    self.capabilities = resp.capabilities;
-
-    if (self.capabilities.relative_root) {
-      self.client.command(['watch-project', getWatchRoot()], onWatchProject);
-    } else {
-      self.client.command(['watch', getWatchRoot()], onWatch);
-    }
-  }
-
-  function onWatchProject(error, resp) {
-    if (handleError(self, error)) {
-      return;
-    }
-
-    handleWarning(resp);
-
-    self.watchProjectInfo = {
-      root: resp.watch,
-      relativePath: resp.relative_path ? resp.relative_path : '',
-    };
-
-    self.client.command(['clock', getWatchRoot()], onClock);
-  }
-
-  function onWatch(error, resp) {
-    if (handleError(self, error)) {
-      return;
-    }
-
-    handleWarning(resp);
-
-    self.client.command(['clock', getWatchRoot()], onClock);
-  }
-
-  function onClock(error, resp) {
-    if (handleError(self, error)) {
-      return;
-    }
-
-    handleWarning(resp);
-
-    var options = {
-      fields: ['name', 'exists', 'new'],
-      since: resp.clock,
-    };
-
-    // If the server has the wildmatch capability available it supports
-    // the recursive **/*.foo style match and we can offload our globs
-    // to the watchman server.  This saves both on data size to be
-    // communicated back to us and compute for evaluating the globs
-    // in our node process.
-    if (self.capabilities.wildmatch) {
-      if (self.globs.length === 0) {
-        if (!self.dot) {
-          // Make sure we honor the dot option if even we're not using globs.
-          options.expression = [
-            'match',
-            '**',
-            'wholename',
-            {
-              includedotfiles: false,
-            },
-          ];
-        }
-      } else {
-        options.expression = ['anyof'];
-        for (var i in self.globs) {
-          options.expression.push([
-            'match',
-            self.globs[i],
-            'wholename',
-            {
-              includedotfiles: self.dot,
-            },
-          ]);
-        }
-      }
-    }
-
-    if (self.capabilities.relative_root) {
-      options.relative_root = self.watchProjectInfo.relativePath;
-    }
-
-    self.client.command(
-      ['subscribe', getWatchRoot(), SUB_NAME, options],
-      onSubscribe
-    );
-  }
-
-  function onSubscribe(error, resp) {
-    if (handleError(self, error)) {
-      return;
-    }
-
-    handleWarning(resp);
-
-    self.emit('ready');
-  }
-
-  self.client.capabilityCheck(
-    {
-      optional: ['wildmatch', 'relative_root'],
-    },
-    onCapability
-  );
+  // Get the WatchmanClient instance corresponding to our watchmanPath (or nothing).
+  // Then subscribe, which will do the appropriate setup so that we will receive
+  // calls to handleChangeEvent when files change.
+  this._client = watchmanClient.getInstance(this.watchmanPath);
+  
+  return this._client.subscribe(this, this.root)
+    .then(
+      (resp) => {
+        this._handleWarning(resp);
+        this.emit('ready');
+      },
+      (error) => {
+        this._handleError(error);
+      });
 };
 
 /**
- * Handles a change event coming from the subscription.
+ * Called by WatchmanClient to create the options, either during initial 'subscribe'
+ * or to resubscribe after a disconnect+reconnect. Note that we are leaving out 
+ * the watchman 'since' and 'relative_root' options, which are handled inside the 
+ * WatchmanClient.
+ */
+WatchmanWatcher.prototype.createOptions = function() {
+  let options = {
+    fields: ['name', 'exists', 'new']
+  };
+
+  // If the server has the wildmatch capability available it supports
+  // the recursive **/*.foo style match and we can offload our globs
+  // to the watchman server.  This saves both on data size to be
+  // communicated back to us and compute for evaluating the globs
+  // in our node process.
+  if (this._client.wildmatch) {
+    if (this.globs.length === 0) {
+      if (!this.dot) {
+        // Make sure we honor the dot option if even we're not using globs.
+        options.expression = [
+          'match',
+          '**',
+          'wholename',
+          {
+            includedotfiles: false,
+          },
+        ];
+      }
+    } else {
+      options.expression = ['anyof'];
+      for (var i in this.globs) {
+        options.expression.push([
+          'match',
+          this.globs[i],
+          'wholename',
+          {
+            includedotfiles: this.dot,
+          },
+        ]);
+      }
+    }
+  }
+
+  return options;
+};
+
+/**
+ * Called by WatchmanClient when it receives an error from the watchman daemon.
+ *
+ * @param {Object} resp
+ */
+WatchmanWatcher.prototype.handleErrorEvent = function(error) {
+  this.emit('error', error);
+};
+
+/**
+ * Called by the WatchmanClient when it is notified about a file change in
+ * the tree for this particular watcher's root.
  *
  * @param {Object} resp
  * @private
  */
 
 WatchmanWatcher.prototype.handleChangeEvent = function(resp) {
-  assert.equal(resp.subscription, SUB_NAME, 'Invalid subscription event.');
   if (Array.isArray(resp.files)) {
     resp.files.forEach(this.handleFileChange, this);
   }
@@ -208,40 +143,28 @@ WatchmanWatcher.prototype.handleChangeEvent = function(resp) {
  */
 
 WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
-  var self = this;
   var absPath;
   var relativePath;
 
-  if (this.capabilities.relative_root) {
-    relativePath = changeDescriptor.name;
-    absPath = path.join(
-      this.watchProjectInfo.root,
-      this.watchProjectInfo.relativePath,
-      relativePath
-    );
-  } else {
-    absPath = path.join(this.root, changeDescriptor.name);
-    relativePath = changeDescriptor.name;
-  }
+  relativePath = changeDescriptor.name;
+  absPath = path.join(this.root, relativePath);
 
-  if (
-    !(self.capabilities.wildmatch && !this.hasIgnore) &&
-    !common.isFileIncluded(this.globs, this.dot, this.doIgnore, relativePath)
-  ) {
+  if (!(this._client.wildmatch && !this.hasIgnore) &&
+      !common.isFileIncluded(this.globs, this.dot, this.doIgnore, relativePath)) {
     return;
   }
 
   if (!changeDescriptor.exists) {
-    self.emitEvent(DELETE_EVENT, relativePath, self.root);
+    this.emitEvent(DELETE_EVENT, relativePath, this.root);
   } else {
-    fs.lstat(absPath, function(error, stat) {
+    fs.lstat(absPath, (error, stat) => {
       // Files can be deleted between the event and the lstat call
       // the most reliable thing to do here is to ignore the event.
       if (error && error.code === 'ENOENT') {
         return;
       }
 
-      if (handleError(self, error)) {
+      if (this._handleError(error)) {
         return;
       }
 
@@ -249,14 +172,14 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
 
       // Change event on dirs are mostly useless.
       if (!(eventType === CHANGE_EVENT && stat.isDirectory())) {
-        self.emitEvent(eventType, relativePath, self.root, stat);
+        this.emitEvent(eventType, relativePath, this.root, stat);
       }
     });
   }
 };
 
 /**
- * Dispatches the event.
+ * Dispatches an event.
  *
  * @param {string} eventType
  * @param {string} filepath
@@ -265,12 +188,7 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
  * @private
  */
 
-WatchmanWatcher.prototype.emitEvent = function(
-  eventType,
-  filepath,
-  root,
-  stat
-) {
+WatchmanWatcher.prototype.emitEvent = function(eventType, filepath, root, stat) {
   this.emit(eventType, filepath, root, stat);
   this.emit(ALL_EVENT, eventType, filepath, root, stat);
 };
@@ -283,8 +201,7 @@ WatchmanWatcher.prototype.emitEvent = function(
  */
 
 WatchmanWatcher.prototype.close = function(callback) {
-  this.client.removeAllListeners();
-  this.client.end();
+  this._client.closeWatcher();
   callback && callback(null, true);
 };
 
@@ -296,14 +213,14 @@ WatchmanWatcher.prototype.close = function(callback) {
  * @private
  */
 
-function handleError(self, error) {
+WatchmanWatcher.prototype._handleError = function(error) {
   if (error != null) {
-    self.emit('error', error);
+    this.emit('error', error);
     return true;
   } else {
     return false;
   }
-}
+};
 
 /**
  * Handles a warning in the watchman resp object.
@@ -312,7 +229,7 @@ function handleError(self, error) {
  * @private
  */
 
-function handleWarning(resp) {
+WatchmanWatcher.prototype._handleWarning = function(resp) {
   if ('warning' in resp) {
     if (RecrawlWarning.isRecrawlWarningDupe(resp.warning)) {
       return true;
@@ -322,4 +239,4 @@ function handleWarning(resp) {
   } else {
     return false;
   }
-}
+};

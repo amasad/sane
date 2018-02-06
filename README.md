@@ -34,7 +34,7 @@ maintains the same API across all modes and will be easy to switch.
 
 ### sane(dir, options)
 
-Watches a directory and all it's descendant directories for changes, deletions, and additions on files and directories.
+Watches a directory and all its descendant directories for changes, deletions, and additions on files and directories.
 
 ```js
 var watcher = sane('path/to/dir', {glob: ['**/*.js', '**/*.css']});
