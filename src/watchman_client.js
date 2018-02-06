@@ -64,11 +64,8 @@ WatchmanClient.prototype.subscribe = function(watchmanWatcher, root) {
       return this._watch(subscription, root);
     })
     .then((resp) => this._clock(subscription))
-    .then((data) => this._subscribe(subscription))
-    .catch((error) => {
-      console.error("Failed creating subscription for root " + root);
-      throw error;
-    });
+    .then((data) => this._subscribe(subscription));
+   // Note: callers are responsible for noting any subscription failure.
 };
 
 /**
