@@ -34,8 +34,11 @@ function WatchmanClient(watchmanBinaryPath) {
   // in _handleClientAndCheck(). This is also called again in _onEnd when
   // trying to reestablish connection to watchman.
   this._clearLocalVars(); 
-
+  
   this._watchmanBinaryPath = watchmanBinaryPath;
+
+  this._backoffTimes = this._setupBackoffTimes();
+
   this._clientListeners = null;  // direct listeners from here to watchman.Client.
 }
 
@@ -104,21 +107,23 @@ WatchmanClient.prototype.closeWatcher = function(watchmanWatcher) {
  * When it's at the last value, it stays there until reset()
  * is called.
  */
-WatchmanClient.prototype._backoffTimes = {
-  _times: [0, 1000, 5000, 10000, 60000],
+WatchmanClient.prototype._setupBackoffTimes = function() {
+  return {
+    _times: [0, 1000, 5000, 10000, 60000],
 
-  _next: 0,
+    _next: 0,
 
-  next() {
-    let val = this._times[_next];
-    if (this._next < this._times.length - 1) {
-      this._next++;
+    next() {
+      let val = this._times[_next];
+      if (this._next < this._times.length - 1) {
+        this._next++;
+      }
+      return val;
+    },
+
+    reset() {
+      this._next = 0;
     }
-    return val;
-  },
-
-  reset() {
-    this._next = 0;
   }
 }
 
@@ -148,18 +153,24 @@ WatchmanClient.prototype._handleClientAndCheck = function(resolve, reject) {
   this._createClientAndCheck().then(
     (value) => {
       let {resp, client} = value;
+      
+      try {
+        this._wildmatch = resp.capabilities.wildmatch;
+        this._relative_root = resp.capabilities.relative_root;
+        this._client = client;
 
-      this._wildmatch = resp.capabilities.wildmatch;
-      this._relative_root = resp.capabilities.relative_root;
-      this._client = client;
+        client.on('subscription', this._onSubscription.bind(this));
+        client.on('error', this._onError.bind(this));
+        client.on('end', this._onEnd.bind(this));
 
-      client.on('subscription', this._onSubscription.bind(this));
-      client.on('error', this._onError.bind(this));
-      client.on('end', this._onEnd.bind(this));
-
-      this._backoffTimes.reset();
-
-      resolve(this);
+        this._backoffTimes.reset();
+        resolve(this);
+      } catch (error) {
+        // somehow, even though we supposedly got a valid value back, it's
+        // malformed, or some other internal error occurred. Reject so
+        // the promise itself doesn't hang forever.
+        reject(error);
+      }
     },
     (error) => {
       // create & capability check failed in any of several ways,
