@@ -53,27 +53,27 @@ WatchmanWatcher.prototype._init = function() {
   // Then subscribe, which will do the appropriate setup so that we will receive
   // calls to handleChangeEvent when files change.
   this._client = watchmanClient.getInstance(this.watchmanPath);
-
-  return this._client.subscribe(this, this.root).then(
-    resp => {
-      this._handleWarning(resp);
-      this.emit('ready');
-    },
-    error => {
-      this._handleError(error);
-    }
-  );
+  
+  return this._client.subscribe(this, this.root)
+    .then(
+      (resp) => {
+        this._handleWarning(resp);
+        this.emit('ready');
+      },
+      (error) => {
+        this._handleError(error);
+      });
 };
 
 /**
  * Called by WatchmanClient to create the options, either during initial 'subscribe'
- * or to resubscribe after a disconnect+reconnect. Note that we are leaving out
- * the watchman 'since' and 'relative_root' options, which are handled inside the
+ * or to resubscribe after a disconnect+reconnect. Note that we are leaving out 
+ * the watchman 'since' and 'relative_root' options, which are handled inside the 
  * WatchmanClient.
  */
 WatchmanWatcher.prototype.createOptions = function() {
   let options = {
-    fields: ['name', 'exists', 'new'],
+    fields: ['name', 'exists', 'new']
   };
 
   // If the server has the wildmatch capability available it supports
@@ -115,7 +115,7 @@ WatchmanWatcher.prototype.createOptions = function() {
 /**
  * Called by WatchmanClient when it receives an error from the watchman daemon.
  *
- * @param {Object} resp
+ * @param {Object} error
  */
 WatchmanWatcher.prototype.handleErrorEvent = function(error) {
   this.emit('error', error);
@@ -149,10 +149,8 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
   relativePath = changeDescriptor.name;
   absPath = path.join(this.root, relativePath);
 
-  if (
-    !(this._client.wildmatch && !this.hasIgnore) &&
-    !common.isFileIncluded(this.globs, this.dot, this.doIgnore, relativePath)
-  ) {
+  if (!(this._client.wildmatch && !this.hasIgnore) &&
+      !common.isFileIncluded(this.globs, this.dot, this.doIgnore, relativePath)) {
     return;
   }
 
@@ -190,12 +188,7 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
  * @private
  */
 
-WatchmanWatcher.prototype.emitEvent = function(
-  eventType,
-  filepath,
-  root,
-  stat
-) {
+WatchmanWatcher.prototype.emitEvent = function(eventType, filepath, root, stat) {
   this.emit(eventType, filepath, root, stat);
   this.emit(ALL_EVENT, eventType, filepath, root, stat);
 };
