@@ -2,6 +2,10 @@
 
 var watchman = require('fb-watchman');
 
+function values(obj) {
+  return Object.keys(obj).map(key => obj[key]);
+}
+
 /**
  * Constants
  */
@@ -75,9 +79,7 @@ WatchmanClient.prototype.subscribe = function(watchmanWatcher, root) {
  * which will end the connection to the watchman.Client, too.
  */
 WatchmanClient.prototype.closeWatcher = function(watchmanWatcher) {
-  let watcherInfos = Object.keys(this._watcherMap).map(
-    key => this._watcherMap[key]
-  );
+  let watcherInfos = values(this._watcherMap);
   let numWatchers = watcherInfos.length;
 
   if (numWatchers > 0) {
@@ -422,7 +424,7 @@ WatchmanClient.prototype._onSubscription = function(resp) {
  * which subscription it belonged to).
  */
 WatchmanClient.prototype._onError = function(error) {
-  Object.values(this._watcherMap).forEach(watcherInfo =>
+  values(this._watcherMap).forEach(watcherInfo =>
     watcherInfo.watchmanWatcher.handleErrorEvent(error)
   );
 };
@@ -441,7 +443,7 @@ WatchmanClient.prototype._onEnd = function() {
   );
 
   // Hold the old watcher map so we use it to recreate all subscriptions.
-  let oldWatcherInfos = Object.values(this._watcherMap);
+  let oldWatcherInfos = values(this._watcherMap);
 
   this._clearLocalVars();
 
