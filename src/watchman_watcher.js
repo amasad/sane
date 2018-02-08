@@ -208,7 +208,7 @@ WatchmanWatcher.prototype.emitEvent = function(
  */
 
 WatchmanWatcher.prototype.close = function(callback) {
-  this._client.closeWatcher();
+  this._client.closeWatcher(this);
   callback && callback(null, true);
 };
 
