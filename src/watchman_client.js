@@ -43,6 +43,12 @@ function WatchmanClient(watchmanBinaryPath) {
   this._backoffTimes = this._setupBackoffTimes();
 
   this._clientListeners = null; // direct listeners from here to watchman.Client.
+
+  // Define a handler for if somehow the Node process gets interrupted. We need to
+  // close down the watchman.Client, if we have one.
+  process.on('SIGINT', () => {
+    this._clearLocalVars();
+  });  
 }
 
 // Define 'wildmatch' property, which must be available when we call the
