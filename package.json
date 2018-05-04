@@ -51,6 +51,6 @@
   },
   "homepage": "https://github.com/amasad/sane",
   "optionalDependencies": {
-    "fsevents": "^1.1.1"
+    "fsevents": "^1.2.3"
   }
 }
