@@ -1,6 +1,7 @@
 'use strict';
 
 var watchman = require('fb-watchman');
+var captureExit = require('capture-exit');
 
 function values(obj) {
   return Object.keys(obj).map(key => obj[key]);
@@ -33,6 +34,8 @@ function values(obj) {
  */
 
 function WatchmanClient(watchmanBinaryPath) {
+  captureExit.captureExit();
+
   // define/clear some local state. The properties will be initialized
   // in _handleClientAndCheck(). This is also called again in _onEnd when
   // trying to reestablish connection to watchman.
@@ -43,6 +46,12 @@ function WatchmanClient(watchmanBinaryPath) {
   this._backoffTimes = this._setupBackoffTimes();
 
   this._clientListeners = null; // direct listeners from here to watchman.Client.
+
+  // Define a handler for if somehow the Node process gets interrupted. We need to
+  // close down the watchman.Client, if we have one.
+  captureExit.onExit(() => {
+    this._clearLocalVars();
+  });
 }
 
 // Define 'wildmatch' property, which must be available when we call the
