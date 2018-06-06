@@ -54,6 +54,7 @@ options:
 * `watchmanPath`: sets a custom path for `watchman` binary.
 * `dot`: enables watching files/directories that start with a dot.
 * `ignored`: a glob, regex, function, or array of any combination.
+* `auto`: a boolean, which if true will choose the best watcher mode for you. It will choose from Watchman, Node, or Polling modes.
 
 For the glob pattern documentation, see [micromatch](https://github.com/micromatch/micromatch).
 If you choose to use `watchman` you'll have to [install watchman yourself](https://facebook.github.io/watchman/docs/install.html)).
