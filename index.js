@@ -1,14 +1,14 @@
 'use strict';
 
-var NodeWatcher = require('./src/node_watcher');
-var PollWatcher = require('./src/poll_watcher');
-var WatchmanWatcher = require('./src/watchman_watcher');
-var FSEventsWatcher = require('./src/fsevents_watcher');
+const NodeWatcher = require('./src/node_watcher');
+const PollWatcher = require('./src/poll_watcher');
+const WatchmanWatcher = require('./src/watchman_watcher');
+const FSEventsWatcher = require('./src/fsevents_watcher');
 
 function sane(dir, options) {
   options = options || {};
   if (options.watcher) {
-    var WatcherClass = require(options.watcher);
+    const WatcherClass = require(options.watcher);
     return new WatcherClass(dir, options);
   } else if (options.poll) {
     return new PollWatcher(dir, options);
