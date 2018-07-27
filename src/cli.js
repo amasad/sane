@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 'use strict';
 
-var sane = require('../');
-var argv = require('minimist')(process.argv.slice(2));
-var execshell = require('exec-sh');
+const sane = require('../');
+const argv = require('minimist')(process.argv.slice(2));
+const execshell = require('exec-sh');
 
 if (argv._.length === 0) {
-  var msg =
+  const msg =
     'Usage: sane <command> [...directory] [--glob=<filePattern>] ' +
     '[--ignored=<filePattern>] [--poll] [--watchman] [--watchman-path=<watchmanBinaryPath>] [--dot] ' +
     '[--wait=<seconds>]';
@@ -14,16 +14,16 @@ if (argv._.length === 0) {
   process.exit();
 }
 
-var opts = {};
-var command = argv._[0];
-var dir = argv._[1] || process.cwd();
-var waitTime = Number(argv.wait || argv.w);
-var dot = argv.dot || argv.d;
-var glob = argv.glob || argv.g;
-var ignored = argv.ignored || argv.i;
-var poll = argv.poll || argv.p;
-var watchman = argv.watchman || argv.w;
-var watchmanPath = argv['watchman-path'];
+const opts = {};
+const command = argv._[0];
+const dir = argv._[1] || process.cwd();
+const waitTime = Number(argv.wait || argv.w);
+const dot = argv.dot || argv.d;
+const glob = argv.glob || argv.g;
+const ignored = argv.ignored || argv.i;
+const poll = argv.poll || argv.p;
+const watchman = argv.watchman || argv.w;
+const watchmanPath = argv['watchman-path'];
 
 if (dot) {
   opts.dot = true;
@@ -44,8 +44,8 @@ if (watchmanPath) {
   opts.watchmanPath = watchmanPath;
 }
 
-var wait = false;
-var watcher = sane(dir, opts);
+let wait = false;
+const watcher = sane(dir, opts);
 
 watcher.on('ready', function() {
   console.log('Watching: ', dir + '/' + (opts.glob || ''));
