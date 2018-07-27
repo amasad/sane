@@ -45,7 +45,7 @@
     "tmp": "0.0.27"
   },
   "engines": {
-    "node": ">=0.6.0"
+    "node": "6.* || 8.* || >= 10.*"
   },
   "bugs": {
     "url": "https://github.com/amasad/sane/issues"
