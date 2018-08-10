@@ -35,7 +35,8 @@
     "micromatch": "^3.1.4",
     "minimist": "^1.1.1",
     "walker": "~1.0.5",
-    "watch": "~0.18.0"
+    "watch": "~0.18.0",
+    "watch-detector": "^0.1.0"
   },
   "devDependencies": {
     "eslint": "^3.19.0",
