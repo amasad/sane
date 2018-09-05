@@ -3,6 +3,7 @@
 const NodeWatcher = require('./src/node_watcher');
 const PollWatcher = require('./src/poll_watcher');
 const WatchmanWatcher = require('./src/watchman_watcher');
+const WatchexecWatcher = require('./src/watchexec_watcher');
 const FSEventsWatcher = require('./src/fsevents_watcher');
 
 function sane(dir, options) {
@@ -14,6 +15,8 @@ function sane(dir, options) {
     return new PollWatcher(dir, options);
   } else if (options.watchman) {
     return new WatchmanWatcher(dir, options);
+  } else if (options.watchexec) {
+    return new WatchexecWatcher(dir, options);
   } else if (options.fsevents) {
     return new FSEventsWatcher(dir, options);
   } else {
@@ -25,4 +28,5 @@ module.exports = sane;
 sane.NodeWatcher = NodeWatcher;
 sane.PollWatcher = PollWatcher;
 sane.WatchmanWatcher = WatchmanWatcher;
+sane.WatchexecWatcher = WatchexecWatcher;
 sane.FSEventsWatcher = FSEventsWatcher;
