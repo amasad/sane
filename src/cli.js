@@ -3,12 +3,15 @@
 
 const sane = require('../');
 const argv = require('minimist')(process.argv.slice(2));
-const execshell = require('exec-sh');
+const spawn = require('child_process').spawn;
+const pkill = require('tree-kill');
+
 
 if (argv._.length === 0) {
   const msg =
     'Usage: sane <command> [...directory] [--glob=<filePattern>] ' +
     '[--ignored=<filePattern>] [--poll] [--watchman] [--watchman-path=<watchmanBinaryPath>] [--dot] ' +
+    '[--kill] [--kill-signal=<signal>]' +
     '[--wait=<seconds>]';
   console.error(msg);
   process.exit();
@@ -24,6 +27,8 @@ const ignored = argv.ignored || argv.i;
 const poll = argv.poll || argv.p;
 const watchman = argv.watchman || argv.w;
 const watchmanPath = argv['watchman-path'];
+const kill = argv.kill || argv.k;
+const killSignal = argv['kill-signal'] || argv.s;
 
 if (dot) {
   opts.dot = true;
@@ -44,12 +49,23 @@ if (watchmanPath) {
   opts.watchmanPath = watchmanPath;
 }
 
+let child = null;
+let runCommand = function() {
+  if (kill && child) {
+    pkill(child.pid, killSignal || 'SIGTERM', function(err) {
+      child = spawn(command, [], { shell: true, stdio: 'inherit' });
+    });
+  } else {
+    child = spawn(command, [], { shell: true, stdio: 'inherit' });
+  }
+}
+
 let wait = false;
 const watcher = sane(dir, opts);
 
 watcher.on('ready', function() {
   console.log('Watching: ', dir + '/' + (opts.glob || ''));
-  execshell(command);
+  runCommand();
 });
 
 watcher.on('change', function(filepath) {
@@ -57,7 +73,7 @@ watcher.on('change', function(filepath) {
     return;
   }
   console.log('Change detected in:', filepath);
-  execshell(command);
+  runCommand();
 
   if (waitTime > 0) {
     wait = true;
