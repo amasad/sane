@@ -9,7 +9,7 @@ if (argv._.length === 0) {
   const msg =
     'Usage: sane <command> [...directory] [--glob=<filePattern>] ' +
     '[--ignored=<filePattern>] [--poll] [--watchman] [--watchman-path=<watchmanBinaryPath>] [--dot] ' +
-    '[--wait=<seconds>]';
+    '[--wait=<seconds>] [--only-changes] [--quiet]';
   console.error(msg);
   process.exit();
 }
@@ -24,6 +24,8 @@ const ignored = argv.ignored || argv.i;
 const poll = argv.poll || argv.p;
 const watchman = argv.watchman || argv.w;
 const watchmanPath = argv['watchman-path'];
+const onlyChanges = argv['only-changes'] | argv.o;
+const quiet = argv.quiet | argv.q;
 
 if (dot) {
   opts.dot = true;
@@ -48,15 +50,21 @@ let wait = false;
 const watcher = sane(dir, opts);
 
 watcher.on('ready', function() {
-  console.log('Watching: ', dir + '/' + (opts.glob || ''));
-  execshell(command);
+  if (!quiet) {
+    console.log('Watching: ', dir + '/' + (opts.glob || ''));
+  }
+  if (!onlyChanges) {
+    execshell(command);
+  }
 });
 
 watcher.on('change', function(filepath) {
   if (wait) {
     return;
   }
-  console.log('Change detected in:', filepath);
+  if (!quiet) {
+    console.log('Change detected in:', filepath);
+  }
   execshell(command);
 
   if (waitTime > 0) {
