@@ -32,9 +32,15 @@ describe('sane in watchman mode with offset project', function() {
   harness.call(this, { watchman: true, offset: true });
 });
 
+describe('sane in watchexec mode', function() {
+  harness.call(this, { watchexec: true });
+});
+
 function getWatcherClass(mode) {
   if (mode.watchman) {
     return sane.WatchmanWatcher;
+  } else if (mode.WatchexecWatcher) {
+    return sane.WatchexecWatcher;
   } else if (mode.poll) {
     return sane.PollWatcher;
   } else if (mode.fsevents) {
