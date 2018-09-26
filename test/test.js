@@ -7,7 +7,6 @@ var rimraf = require('rimraf');
 var path = require('path');
 var assert = require('assert');
 var tmp = require('tmp');
-var os = require('os');
 
 tmp.setGracefulCleanup();
 var jo = path.join.bind(path);
@@ -19,11 +18,12 @@ describe('sane in node mode', function() {
   harness.call(this, {});
 });
 
-if (os.platform() === 'darwin') {
-  describe('sane in fsevents mode', function() {
-    harness.call(this, { fsevents: true });
+describe('sane in fsevents mode', function() {
+  it('errors in a helpful manner', function() {
+    assert.throws(() => sane.FSEventsWatcher, 'asdf');
+    assert.throws(() => sane('/dev/null', { fsevents: true }), 'asdf');
   });
-}
+});
 
 describe('sane in watchman mode', function() {
   harness.call(this, { watchman: true });
@@ -43,8 +43,6 @@ function getWatcherClass(mode) {
     return sane.WatchexecWatcher;
   } else if (mode.poll) {
     return sane.PollWatcher;
-  } else if (mode.fsevents) {
-    return sane.FSEventsWatcher;
   } else {
     return sane.NodeWatcher;
   }
