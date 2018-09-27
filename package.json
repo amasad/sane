@@ -51,8 +51,5 @@
   "bugs": {
     "url": "https://github.com/amasad/sane/issues"
   },
-  "homepage": "https://github.com/amasad/sane",
-  "optionalDependencies": {
-    "fsevents": "^1.2.3"
-  }
+  "homepage": "https://github.com/amasad/sane"
 }
