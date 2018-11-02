@@ -6,7 +6,7 @@ const WatchmanWatcher = require('./src/watchman_watcher');
 const WatchexecWatcher = require('./src/watchexec_watcher');
 
 function throwNoFSEventsSupports() {
-    throw new Error('Sane >= 4 no longer support the fsevents module.');
+  throw new Error('Sane >= 4 no longer support the fsevents module.');
 }
 
 function sane(dir, options) {
