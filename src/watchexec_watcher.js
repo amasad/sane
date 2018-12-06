@@ -51,9 +51,11 @@ function _messageHandler(data) {
       } else {
         try {
           stat = statSync(file);
-        } catch(e) {
+        } catch (e) {
           // There is likely a delete coming down the pipe.
-          if (e.code === 'ENOENT') return;
+          if (e.code === 'ENOENT') {
+            return;
+          }
           throw e;
         }
       }
