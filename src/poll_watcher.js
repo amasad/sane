@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const watch = require('watch');
+const watch = require('@cnakazawa/watch');
 const common = require('./common');
 const EventEmitter = require('events').EventEmitter;
 
