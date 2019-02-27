@@ -2,7 +2,7 @@
 
 var fs = require('fs');
 var path = require('path');
-var watch = require('@cnakazawa/watch');
+var watch = require('watch');
 var common = require('../src/common');
 var EventEmitter = require('events').EventEmitter;
 
