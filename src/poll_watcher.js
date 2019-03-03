@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const watch = require('watch');
+const watch = require('@cnakazawa/watch');
 const common = require('./common');
 const EventEmitter = require('events').EventEmitter;
 
@@ -38,7 +38,7 @@ module.exports = class PollWatcher extends EventEmitter {
     watch.createMonitor(
       this.root,
       {
-        interval: opts.interval || DEFAULT_DELAY,
+        interval: (opts.interval || DEFAULT_DELAY) / 1000,
         filter: this.filter.bind(this),
       },
       this.init.bind(this)

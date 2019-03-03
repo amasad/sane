@@ -2,7 +2,7 @@
 
 var fs = require('fs');
 var path = require('path');
-var watch = require('watch');
+var watch = require('@cnakazawa/watch');
 var common = require('../src/common');
 var EventEmitter = require('events').EventEmitter;
 
@@ -44,7 +44,7 @@ function PluginTestWatcher(dir, opts) {
   watch.createMonitor(
     this.root,
     {
-      interval: opts.interval || DEFAULT_DELAY,
+      interval: (opts.interval || DEFAULT_DELAY) / 1000,
       filter: this.filter.bind(this),
     },
     this.init.bind(this)
