@@ -35,6 +35,6 @@ sane.WatchexecWatcher = WatchexecWatcher;
 
 Object.defineProperty(sane, 'FSEventsWatcher', {
   get() {
-    throwNoFSEventsSupports();
+    return throwNoFSEventsSupports();
   },
 });
