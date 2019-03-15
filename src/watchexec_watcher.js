@@ -49,7 +49,15 @@ function _messageHandler(data) {
       if (type === DELETE_EVENT) {
         stat = null;
       } else {
-        stat = statSync(file);
+        try {
+          stat = statSync(file);
+        } catch (e) {
+          // There is likely a delete coming down the pipe.
+          if (e.code === 'ENOENT') {
+            return;
+          }
+          throw e;
+        }
       }
       this.emitEvent(type, path.relative(this.root, file), stat);
     });
