@@ -124,6 +124,11 @@ OPTIONS:
       Duration, in seconds, that watching will be disabled
       after running <command>. Setting this option will
       throttle calls to <command> for the specified duration.
+    --quiet, -q
+      Disables sane's console output
+
+    --changes-only, -o
+      Runs <command> only when a change occur. Skips running <command> at startup
 ```
 
 It will watch the given `directory` and run the given <command> every time a file changes.
