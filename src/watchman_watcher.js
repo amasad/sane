@@ -2,7 +2,9 @@
 
 const fs = require('fs');
 const path = require('path');
+const micromatch = require('micromatch');
 const common = require('./common');
+const parseGlob = require('parse-glob');
 const watchmanClient = require('./watchman_client');
 const EventEmitter = require('events').EventEmitter;
 const RecrawlWarning = require('./utils/recrawl-warning-dedupe');
@@ -33,6 +35,18 @@ module.exports = WatchmanWatcher;
 
 function WatchmanWatcher(dir, opts) {
   common.assignOptions(this, opts);
+
+  this.globsSupported = this.globs.every(function (glob) {
+    const has = parseGlob(glob).is;
+    return !(has.negated || has.extGlob);
+  });
+
+  let expandedGlobs = [];
+  for (let i in this.globs) {
+    expandedGlobs = expandedGlobs.concat(micromatch.braces(this.globs[i], { expand: true }));
+  }
+  this.globs = expandedGlobs;
+
   this.root = path.resolve(dir);
   this._init();
 }
@@ -81,7 +95,7 @@ WatchmanWatcher.prototype.createOptions = function() {
   // to the watchman server.  This saves both on data size to be
   // communicated back to us and compute for evaluating the globs
   // in our node process.
-  if (this._client.wildmatch) {
+  if (this.globsSupported && this._client.wildmatch) {
     if (this.globs.length === 0) {
       if (!this.dot) {
         // Make sure we honor the dot option if even we're not using globs.
@@ -150,7 +164,7 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
   absPath = path.join(this.root, relativePath);
 
   if (
-    !(this._client.wildmatch && !this.hasIgnore) &&
+    (!this._client.wildmatch || !this.globsSupported || this.hasIgnore) &&
     !common.isFileIncluded(this.globs, this.dot, this.doIgnore, relativePath)
   ) {
     return;
