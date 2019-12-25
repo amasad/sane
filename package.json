@@ -29,21 +29,21 @@
   "license": "MIT",
   "dependencies": {
     "@cnakazawa/watch": "^1.0.3",
-    "anymatch": "^2.0.0",
+    "anymatch": "^3.1.1",
     "capture-exit": "^2.0.0",
-    "exec-sh": "^0.3.2",
-    "execa": "^1.0.0",
-    "fb-watchman": "^2.0.0",
-    "micromatch": "^3.1.4",
+    "exec-sh": "^0.3.4",
+    "execa": "^4.0.0",
+    "fb-watchman": "^2.0.1",
+    "micromatch": "^4.0.2",
     "minimist": "^1.1.1",
     "walker": "~1.0.5"
   },
   "devDependencies": {
-    "eslint": "^5.15.1",
-    "mocha": "^6.0.2",
-    "prettier": "^1.16.4",
-    "rimraf": "~2.6.3",
-    "tmp": "0.0.33"
+    "eslint": "^6.8.0",
+    "mocha": "^6.2.2",
+    "prettier": "^1.19.1",
+    "rimraf": "~3.0.0",
+    "tmp": "0.1.0"
   },
   "engines": {
     "node": "10.* || >= 12.*"
