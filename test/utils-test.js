@@ -1,8 +1,8 @@
 /* eslint-env node, mocha */
 'use strict';
 
-var RecrawlWarning = require('../src/utils/recrawl-warning-dedupe');
-var assert = require('assert');
+const RecrawlWarning = require('../src/utils/recrawl-warning-dedupe');
+const assert = require('assert');
 
 describe.only('RecrawlWarning', function() {
   afterEach(function() {
@@ -29,7 +29,7 @@ describe.only('RecrawlWarning', function() {
       });
 
       it('returns warning, if found', function() {
-        var warning = new RecrawlWarning('some/path', 5);
+        let warning = new RecrawlWarning('some/path', 5);
         RecrawlWarning.RECRAWL_WARNINGS.push(warning);
         assert.equal(
           RecrawlWarning.findByRoot('some/path'),
@@ -39,8 +39,8 @@ describe.only('RecrawlWarning', function() {
       });
 
       it('returns FIRST warning, if found', function() {
-        var warning = new RecrawlWarning('some/path', 5);
-        var warning2 = new RecrawlWarning('some/path', 5);
+        let warning = new RecrawlWarning('some/path', 5);
+        let warning2 = new RecrawlWarning('some/path', 5);
         RecrawlWarning.RECRAWL_WARNINGS.push(warning);
         RecrawlWarning.RECRAWL_WARNINGS.push(warning2);
         assert.equal(
@@ -52,8 +52,8 @@ describe.only('RecrawlWarning', function() {
 
       describe('count', function() {
         it('returns first, regardless of count', function() {
-          var warning = new RecrawlWarning('some/path', 5);
-          var warning2 = new RecrawlWarning('some/path', 4);
+          let warning = new RecrawlWarning('some/path', 5);
+          let warning2 = new RecrawlWarning('some/path', 4);
           RecrawlWarning.RECRAWL_WARNINGS.push(warning2);
           RecrawlWarning.RECRAWL_WARNINGS.push(warning);
           assert.equal(
