@@ -1,8 +1,8 @@
 machine:
   node:
-    version: 6.9.5
+    version: 10.18.0
   npm:
-    version: 3.10.10
+    version: 6.13.4
 dependencies:
   pre:
     - git clone https://github.com/facebook/watchman.git && cd watchman && git checkout v4.7.0 && ./autogen.sh && ./configure && make && sudo make install
