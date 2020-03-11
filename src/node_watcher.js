@@ -217,33 +217,30 @@ module.exports = class NodeWatcher extends EventEmitter {
     let found = false;
     let closest = { mtime: 0 };
     let c = 0;
-    Object.keys(this.dirRegistery[dir]).forEach(function(file, i, arr) {
-      fs.lstat(
-        path.join(dir, file),
-        function(error, stat) {
-          if (found) {
-            return;
-          }
+    Object.keys(this.dirRegistery[dir]).forEach((file, i, arr) => {
+      fs.lstat(path.join(dir, file), (error, stat) => {
+        if (found) {
+          return;
+        }
 
-          if (error) {
-            if (isIgnorableFileError(error)) {
-              found = true;
-              callback(file);
-            } else {
-              this.emit('error', error);
-            }
+        if (error) {
+          if (isIgnorableFileError(error)) {
+            found = true;
+            callback(file);
           } else {
-            if (stat.mtime > closest.mtime) {
-              stat.file = file;
-              closest = stat;
-            }
-            if (arr.length === ++c) {
-              callback(closest.file);
-            }
+            this.emit('error', error);
           }
-        }.bind(this)
-      );
-    }, this);
+        } else {
+          if (stat.mtime > closest.mtime) {
+            stat.file = file;
+            closest = stat;
+          }
+          if (arr.length === ++c) {
+            callback(closest.file);
+          }
+        }
+      });
+    });
   }
 
   /**
@@ -257,15 +254,11 @@ module.exports = class NodeWatcher extends EventEmitter {
 
   normalizeChange(dir, event, file) {
     if (!file) {
-      this.detectChangedFile(
-        dir,
-        event,
-        function(actualFile) {
-          if (actualFile) {
-            this.processChange(dir, event, actualFile);
-          }
-        }.bind(this)
-      );
+      this.detectChangedFile(dir, event, actualFile => {
+        if (actualFile) {
+          this.processChange(dir, event, actualFile);
+        }
+      });
     } else {
       this.processChange(dir, event, path.normalize(file));
     }
@@ -284,45 +277,42 @@ module.exports = class NodeWatcher extends EventEmitter {
     let fullPath = path.join(dir, file);
     let relativePath = path.join(path.relative(this.root, dir), file);
 
-    fs.lstat(
-      fullPath,
-      function(error, stat) {
-        if (error && error.code !== 'ENOENT') {
-          this.emit('error', error);
-        } else if (!error && stat.isDirectory()) {
-          // win32 emits usless change events on dirs.
-          if (event !== 'change') {
-            this.watchdir(fullPath);
-            if (
-              common.isFileIncluded(
-                this.globs,
-                this.dot,
-                this.doIgnore,
-                relativePath
-              )
-            ) {
-              this.emitEvent(ADD_EVENT, relativePath, stat);
-            }
-          }
-        } else {
-          let registered = this.registered(fullPath);
-          if (error && error.code === 'ENOENT') {
-            this.unregister(fullPath);
-            this.stopWatching(fullPath);
-            this.unregisterDir(fullPath);
-            if (registered) {
-              this.emitEvent(DELETE_EVENT, relativePath);
-            }
-          } else if (registered) {
-            this.emitEvent(CHANGE_EVENT, relativePath, stat);
-          } else {
-            if (this.register(fullPath)) {
-              this.emitEvent(ADD_EVENT, relativePath, stat);
-            }
+    fs.lstat(fullPath, (error, stat) => {
+      if (error && error.code !== 'ENOENT') {
+        this.emit('error', error);
+      } else if (!error && stat.isDirectory()) {
+        // win32 emits usless change events on dirs.
+        if (event !== 'change') {
+          this.watchdir(fullPath);
+          if (
+            common.isFileIncluded(
+              this.globs,
+              this.dot,
+              this.doIgnore,
+              relativePath
+            )
+          ) {
+            this.emitEvent(ADD_EVENT, relativePath, stat);
           }
         }
-      }.bind(this)
-    );
+      } else {
+        let registered = this.registered(fullPath);
+        if (error && error.code === 'ENOENT') {
+          this.unregister(fullPath);
+          this.stopWatching(fullPath);
+          this.unregisterDir(fullPath);
+          if (registered) {
+            this.emitEvent(DELETE_EVENT, relativePath);
+          }
+        } else if (registered) {
+          this.emitEvent(CHANGE_EVENT, relativePath, stat);
+        } else {
+          if (this.register(fullPath)) {
+            this.emitEvent(ADD_EVENT, relativePath, stat);
+          }
+        }
+      }
+    });
   }
 
   /**
@@ -341,39 +331,28 @@ module.exports = class NodeWatcher extends EventEmitter {
       return;
     }
     clearTimeout(this.changeTimers[key]);
-    this.changeTimers[key] = setTimeout(
-      function() {
-        delete this.changeTimers[key];
-        if (type === ADD_EVENT && stat.isDirectory()) {
-          // Recursively emit add events and watch for sub-files/folders
-          common.recReaddir(
-            path.resolve(this.root, file),
-            function emitAddDir(dir, stats) {
-              this.watchdir(dir);
-              this.rawEmitEvent(
-                ADD_EVENT,
-                path.relative(this.root, dir),
-                stats
-              );
-            }.bind(this),
-            function emitAddFile(file, stats) {
-              this.register(file);
-              this.rawEmitEvent(
-                ADD_EVENT,
-                path.relative(this.root, file),
-                stats
-              );
-            }.bind(this),
-            function endCallback() {},
-            this.checkedEmitError,
-            this.ignored
-          );
-        } else {
-          this.rawEmitEvent(type, file, stat);
-        }
-      }.bind(this),
-      DEFAULT_DELAY
-    );
+    this.changeTimers[key] = setTimeout(() => {
+      delete this.changeTimers[key];
+      if (type === ADD_EVENT && stat.isDirectory()) {
+        // Recursively emit add events and watch for sub-files/folders
+        common.recReaddir(
+          path.resolve(this.root, file),
+          function emitAddDir(dir, stats) {
+            this.watchdir(dir);
+            this.rawEmitEvent(ADD_EVENT, path.relative(this.root, dir), stats);
+          }.bind(this),
+          function emitAddFile(file, stats) {
+            this.register(file);
+            this.rawEmitEvent(ADD_EVENT, path.relative(this.root, file), stats);
+          }.bind(this),
+          function endCallback() {},
+          this.checkedEmitError,
+          this.ignored
+        );
+      } else {
+        this.rawEmitEvent(type, file, stat);
+      }
+    }, DEFAULT_DELAY);
   }
 
   /**

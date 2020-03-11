@@ -1,6 +1,5 @@
 [![Try on repl.it](https://repl-badge.jajoosam.repl.co/try.png)](https://repl.it/@amasad/sane-playground)
-
-[![CircleCI](https://circleci.com/gh/amasad/sane.svg?style=svg)](https://circleci.com/gh/amasad/sane)
+![CI](https://github.com/amasad/sane/workflows/CI/badge.svg)
 
 sane
 ----
