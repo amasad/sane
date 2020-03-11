@@ -51,5 +51,9 @@
   "bugs": {
     "url": "https://github.com/amasad/sane/issues"
   },
-  "homepage": "https://github.com/amasad/sane"
+  "homepage": "https://github.com/amasad/sane",
+  "volta": {
+    "node": "12.16.1",
+    "yarn": "1.22.4"
+  }
 }
