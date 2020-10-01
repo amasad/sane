@@ -32,7 +32,7 @@
     "anymatch": "^2.0.0",
     "capture-exit": "^2.0.0",
     "exec-sh": "^0.3.2",
-    "execa": "^1.0.0",
+    "execa": "^4.0.3",
     "fb-watchman": "^2.0.0",
     "micromatch": "^3.1.4",
     "minimist": "^1.1.1",
