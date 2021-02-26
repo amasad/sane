@@ -26,6 +26,9 @@ jobs:
     - uses: rwjblue/setup-volta@v1
       with:
         node-version: ${{ matrix.node }}
+    - name: install osx native dependencies
+      if: matrix.os == 'macOS-latest'
+      run: brew install automake autoconf libtool openssl
     - name: install dependencies
       run: yarn
     - name: setup watchman
