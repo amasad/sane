@@ -5,11 +5,13 @@ const sane = require('../');
 const argv = require('minimist')(process.argv.slice(2));
 const execshell = require('exec-sh');
 
+let runningCommand = undefined;
+
 if (argv._.length === 0) {
   const msg =
     'Usage: sane <command> [...directory] [--glob=<filePattern>] ' +
     '[--ignored=<filePattern>] [--poll] [--watchman] [--watchman-path=<watchmanBinaryPath>] [--dot] ' +
-    '[--wait=<seconds>] [--only-changes] [--quiet]';
+    '[--wait=<seconds>] [--only-changes] [--quiet] [--kill]';
   console.error(msg);
   process.exit();
 }
@@ -26,6 +28,7 @@ const watchman = argv.watchman || argv.w;
 const watchmanPath = argv['watchman-path'];
 const onlyChanges = argv['only-changes'] | argv.o;
 const quiet = argv.quiet | argv.q;
+const kill = argv.kill || argv.k;
 
 if (dot) {
   opts.dot = true;
@@ -54,7 +57,7 @@ watcher.on('ready', function() {
     console.log('Watching: ', dir + '/' + (opts.glob || ''));
   }
   if (!onlyChanges) {
-    execshell(command);
+    runningCommand = execshell(command);
   }
 });
 
@@ -65,7 +68,10 @@ watcher.on('change', function(filepath) {
   if (!quiet) {
     console.log('Change detected in:', filepath);
   }
-  execshell(command);
+  if (kill && runningCommand){
+    runningCommand.kill();
+  }
+  runningCommand = execshell(command);
 
   if (waitTime > 0) {
     wait = true;
