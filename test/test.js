@@ -1,15 +1,15 @@
 /* eslint-env node, mocha */
 'use strict';
 
-var fs = require('fs');
-var sane = require('../');
-var rimraf = require('rimraf');
-var path = require('path');
-var assert = require('assert');
-var tmp = require('tmp');
+const fs = require('fs');
+const sane = require('../');
+const rimraf = require('rimraf');
+const path = require('path');
+const assert = require('assert');
+const tmp = require('tmp');
 
 tmp.setGracefulCleanup();
-var jo = path.join.bind(path);
+const jo = path.join.bind(path);
 
 describe('sane in polling mode', function() {
   harness.call(this, { poll: true });
@@ -49,12 +49,14 @@ function getWatcherClass(mode) {
 }
 
 function harness(mode) {
+  const defer = fn => setTimeout(fn, mode.poll ? 1000 : 300);
+
   if (mode.poll) {
     this.timeout(5000);
   }
 
-  var global_testdir = null;
-  var testdir = null;
+  let global_testdir = null;
+  let testdir = null;
   after(function() {
     if (global_testdir) {
       try {
@@ -81,15 +83,15 @@ function harness(mode) {
       fs.mkdirSync(testdir);
     }
 
-    for (var i = 0; i < 10; i++) {
+    for (let i = 0; i < 10; i++) {
       fs.writeFileSync(jo(testdir, 'file_' + i), 'test_' + i);
-      var subdir = jo(testdir, 'sub_' + i);
+      let subdir = jo(testdir, 'sub_' + i);
       try {
         fs.mkdirSync(subdir);
       } catch (e) {
         // Already exists.
       }
-      for (var j = 0; j < 10; j++) {
+      for (let j = 0; j < 10; j++) {
         fs.writeFileSync(jo(subdir, 'file_' + j), 'test_' + j);
       }
     }
@@ -116,7 +118,7 @@ function harness(mode) {
 
   describe('sane(file)', function() {
     beforeEach(function() {
-      var Watcher = getWatcherClass(mode);
+      let Watcher = getWatcherClass(mode);
       this.watcher = new Watcher(testdir);
     });
 
@@ -132,7 +134,7 @@ function harness(mode) {
     });
 
     it('change emits event', function(done) {
-      var testfile = jo(testdir, 'file_1');
+      let testfile = jo(testdir, 'file_1');
       this.watcher.on('error', function(error) {
         done(error);
       });
@@ -148,9 +150,9 @@ function harness(mode) {
     });
 
     it('emits change events for subdir files', function(done) {
-      var subdir = 'sub_1';
-      var testfile = jo(testdir, subdir, 'file_1');
-      this.watcher.on('change', function(filepath, dir) {
+      let subdir = 'sub_1';
+      let testfile = jo(testdir, subdir, 'file_1');
+      this.watcher.on('change', (filepath, dir) => {
         assert.equal(filepath, path.relative(testdir, testfile));
         assert.equal(dir, testdir);
         done();
@@ -160,41 +162,39 @@ function harness(mode) {
       });
     });
     it('adding a file will trigger an add event', function(done) {
-      var testfile = jo(testdir, 'file_x' + Math.floor(Math.random() * 10000));
-      this.watcher.on('add', function(filepath, dir, stat) {
+      let testfile = jo(testdir, 'file_x' + Math.floor(Math.random() * 10000));
+      this.watcher.on('add', (filepath, dir, stat) => {
         assert(stat instanceof fs.Stats);
         assert.equal(filepath, path.relative(testdir, testfile));
         assert.equal(dir, testdir);
         done();
       });
-      this.watcher.on('change', function() {
+      this.watcher.on('change', () => {
         done(new Error('Should not emit change on add'));
       });
-      this.watcher.on('ready', function() {
+      this.watcher.on('ready', () => {
         fs.writeFileSync(testfile, 'wow');
       });
     });
 
     it('removing a file will emit delete event', function(done) {
-      var testfile = jo(testdir, 'file_9');
-      this.watcher.on('delete', function(filepath, dir) {
+      let testfile = jo(testdir, 'file_9');
+      this.watcher.on('delete', (filepath, dir) => {
         assert.equal(filepath, path.relative(testdir, testfile));
         assert.equal(dir, testdir);
         done();
       });
-      this.watcher.on('ready', function() {
-        fs.unlinkSync(testfile);
-      });
+      this.watcher.on('ready', () => fs.unlinkSync(testfile));
     });
 
     it('changing, removing, deleting should emit the "all" event', function(done) {
-      var toChange = jo(testdir, 'file_4');
-      var toDelete = jo(testdir, 'file_5');
-      var toAdd = jo(testdir, 'file_x' + Math.floor(Math.random() * 10000));
-      var i = 0;
-      var added = false;
+      let toChange = jo(testdir, 'file_4');
+      let toDelete = jo(testdir, 'file_5');
+      let toAdd = jo(testdir, 'file_x' + Math.floor(Math.random() * 10000));
+      let i = 0;
+      let added = false;
 
-      this.watcher.on('all', function(type, filepath, dir, stat) {
+      this.watcher.on('all', (type, filepath, dir, stat) => {
         assert.equal(dir, testdir);
         if (type === 'change') {
           // Windows emits additional change events for newly created files.
@@ -216,7 +216,7 @@ function harness(mode) {
         }
       });
 
-      this.watcher.on('ready', function() {
+      this.watcher.on('ready', () => {
         fs.writeFileSync(toChange, 'hai');
         fs.unlinkSync(toDelete);
         fs.writeFileSync(toAdd, 'hai wow');
@@ -224,8 +224,8 @@ function harness(mode) {
     });
 
     it('removing a dir will emit delete event', function(done) {
-      var subdir = jo(testdir, 'sub_9');
-      this.watcher.on('delete', function(filepath, dir) {
+      let subdir = jo(testdir, 'sub_9');
+      this.watcher.on('delete', (filepath, dir) => {
         // Ignore delete events for files in the dir.
         if (path.dirname(filepath) === path.relative(testdir, subdir)) {
           return;
@@ -234,29 +234,25 @@ function harness(mode) {
         assert.equal(dir, testdir);
         done();
       });
-      this.watcher.on('ready', function() {
-        rimraf.sync(subdir);
-      });
+      this.watcher.on('ready', () => rimraf.sync(subdir));
     });
 
     it('adding a dir will emit an add event', function(done) {
-      var subdir = jo(testdir, 'sub_x' + Math.floor(Math.random() * 10000));
-      this.watcher.on('add', function(filepath, dir, stat) {
+      let subdir = jo(testdir, 'sub_x' + Math.floor(Math.random() * 10000));
+      this.watcher.on('add', (filepath, dir, stat) => {
         assert(stat instanceof fs.Stats);
         assert.equal(filepath, path.relative(testdir, subdir));
         assert.equal(dir, testdir);
         done();
       });
-      this.watcher.on('ready', function() {
-        fs.mkdirSync(subdir);
-      });
+      this.watcher.on('ready', () => fs.mkdirSync(subdir));
     });
 
     it('adding in a subdir will trigger an add event', function(done) {
-      var subdir = jo(testdir, 'sub_x' + Math.floor(Math.random() * 10000));
-      var testfile = jo(subdir, 'file_x' + Math.floor(Math.random() * 10000));
-      var i = 0;
-      this.watcher.on('add', function(filepath, dir, stat) {
+      let subdir = jo(testdir, 'sub_x' + Math.floor(Math.random() * 10000));
+      let testfile = jo(subdir, 'file_x' + Math.floor(Math.random() * 10000));
+      let i = 0;
+      this.watcher.on('add', (filepath, dir, stat) => {
         assert(stat instanceof fs.Stats);
         if (++i === 1) {
           assert.equal(filepath, path.relative(testdir, subdir));
@@ -267,74 +263,65 @@ function harness(mode) {
           done();
         }
       });
-      this.watcher.on('ready', function() {
+      this.watcher.on('ready', () => {
         fs.mkdirSync(subdir);
-        defer(function() {
-          fs.writeFileSync(testfile, 'wow');
-        });
+        defer(() => fs.writeFileSync(testfile, 'wow'));
       });
     });
 
     it('closes watchers when dirs are deleted', function(done) {
-      var subdir = jo(testdir, 'sub_1');
-      var testfile = jo(subdir, 'file_1');
-      var actualFiles = {};
-      var expectedFiles = {};
+      let subdir = jo(testdir, 'sub_1');
+      let testfile = jo(subdir, 'file_1');
+      let actualFiles = {};
+      let expectedFiles = {};
       expectedFiles[path.relative(testdir, subdir)] = true;
       expectedFiles[path.relative(testdir, testfile)] = true;
-      this.watcher.on(
-        'ready',
-        function() {
-          this.watcher.on('add', function(filepath) {
-            // win32 order is not guaranteed and events may leak between tests
-            if (expectedFiles[filepath]) {
-              actualFiles[filepath] = true;
-            }
-            if (Object.keys(actualFiles).length === 2) {
-              assert.deepEqual(expectedFiles, actualFiles);
-              done();
-            }
-          });
-          rimraf.sync(subdir);
-          defer(function() {
-            fs.mkdirSync(subdir);
-            defer(function() {
-              fs.writeFileSync(testfile, 'wow');
-            });
-          });
-        }.bind(this)
-      );
+      this.watcher.on('ready', () => {
+        this.watcher.on('add', filepath => {
+          // win32 order is not guaranteed and events may leak between tests
+          if (expectedFiles[filepath]) {
+            actualFiles[filepath] = true;
+          }
+          if (Object.keys(actualFiles).length === 2) {
+            assert.deepEqual(expectedFiles, actualFiles);
+            done();
+          }
+        });
+        rimraf.sync(subdir);
+        defer(() => {
+          fs.mkdirSync(subdir);
+          defer(() => fs.writeFileSync(testfile, 'wow'));
+        });
+      });
     });
 
     it('should be ok to remove and then add the same file', function(done) {
-      var testfile = jo(testdir, 'sub_8', 'file_1');
-      this.watcher.on('add', function(filepath, dir) {
+      let testfile = jo(testdir, 'sub_8', 'file_1');
+      this.watcher.on('add', (filepath, dir) => {
         assert.equal(filepath, path.relative(testdir, testfile));
         assert.equal(dir, testdir);
         done();
       });
-      this.watcher.on('delete', function(filepath, dir) {
+      this.watcher.on('delete', (filepath, dir) => {
         assert.equal(filepath, path.relative(testdir, testfile));
         assert.equal(dir, testdir);
       });
-      this.watcher.on('ready', function() {
+      this.watcher.on('ready', () => {
         fs.unlinkSync(testfile);
-        defer(function() {
-          fs.writeFileSync(testfile, 'wow');
-        });
+        defer(() => fs.writeFileSync(testfile, 'wow'));
       });
     });
 
     if (!mode.poll) {
       it('emits events for subdir/subdir files', function(done) {
-        var subdir1 = 'subsub_1';
-        var subdir2 = 'subsub_2';
-        var filename = 'file_1';
-        var testfile = jo(testdir, subdir1, subdir2, filename);
-        var addedSubdir1 = false;
-        var addedSubdir2 = false;
-        var addedFile = false;
-        this.watcher.on('add', function(filepath) {
+        let subdir1 = 'subsub_1';
+        let subdir2 = 'subsub_2';
+        let filename = 'file_1';
+        let testfile = jo(testdir, subdir1, subdir2, filename);
+        let addedSubdir1 = false;
+        let addedSubdir2 = false;
+        let addedFile = false;
+        this.watcher.on('add', filepath => {
           if (filepath === subdir1) {
             assert.equal(addedSubdir1, false);
             addedSubdir1 = true;
@@ -349,21 +336,21 @@ function harness(mode) {
             done();
           }
         });
-        this.watcher.on('ready', function() {
+        this.watcher.on('ready', () => {
           fs.mkdirSync(jo(testdir, subdir1));
           fs.mkdirSync(jo(testdir, subdir1, subdir2));
           fs.writeFileSync(testfile, 'wow');
         });
       });
       it('emits events for subdir/subdir files 2', function(done) {
-        var subdir1 = 'subsub_1b';
-        var subdir2 = 'subsub_2b';
-        var filename = 'file_1b';
-        var testfile = jo(testdir, subdir1, subdir2, filename);
-        var addedSubdir1 = false;
-        var addedSubdir2 = false;
-        var addedFile = false;
-        this.watcher.on('add', function(filepath) {
+        let subdir1 = 'subsub_1b';
+        let subdir2 = 'subsub_2b';
+        let filename = 'file_1b';
+        let testfile = jo(testdir, subdir1, subdir2, filename);
+        let addedSubdir1 = false;
+        let addedSubdir2 = false;
+        let addedFile = false;
+        this.watcher.on('add', filepath => {
           if (filepath === subdir1) {
             assert.equal(addedSubdir1, false);
             addedSubdir1 = true;
@@ -378,12 +365,10 @@ function harness(mode) {
             done();
           }
         });
-        this.watcher.on('ready', function() {
+        this.watcher.on('ready', () => {
           fs.mkdirSync(jo(testdir, subdir1));
           fs.mkdirSync(jo(testdir, subdir1, subdir2));
-          setTimeout(function() {
-            fs.writeFileSync(testfile, 'wow');
-          }, 500);
+          setTimeout(() => fs.writeFileSync(testfile, 'wow'), 500);
         });
       });
     }
@@ -391,7 +376,7 @@ function harness(mode) {
 
   describe('sane(file, glob)', function() {
     beforeEach(function() {
-      var Watcher = getWatcherClass(mode);
+      let Watcher = getWatcherClass(mode);
       this.watcher = new Watcher(testdir, { glob: ['**/file_1', '**/file_2'] });
     });
 
@@ -400,15 +385,15 @@ function harness(mode) {
     });
 
     it('ignore files according to glob', function(done) {
-      var i = 0;
-      this.watcher.on('change', function(filepath, dir) {
+      let i = 0;
+      this.watcher.on('change', (filepath, dir) => {
         assert.ok(filepath.match(/file_(1|2)/), 'only file_1 and file_2');
         assert.equal(dir, testdir);
         if (++i == 2) {
           done();
         }
       });
-      this.watcher.on('ready', function() {
+      this.watcher.on('ready', () => {
         fs.writeFileSync(jo(testdir, 'file_1'), 'wow');
         fs.writeFileSync(jo(testdir, 'file_9'), 'wow');
         fs.writeFileSync(jo(testdir, 'file_3'), 'wow');
@@ -419,7 +404,7 @@ function harness(mode) {
 
   describe('sane(dir, {dot: false})', function() {
     beforeEach(function() {
-      var Watcher = getWatcherClass(mode);
+      let Watcher = getWatcherClass(mode);
       this.watcher = new Watcher(testdir, { dot: false });
     });
 
@@ -428,15 +413,15 @@ function harness(mode) {
     });
 
     it('should ignore dot files', function(done) {
-      var i = 0;
-      this.watcher.on('change', function(filepath, dir) {
+      let i = 0;
+      this.watcher.on('change', (filepath, dir) => {
         assert.ok(filepath.match(/file_(1|2)/), 'only file_1 and file_2');
         assert.equal(dir, testdir);
         if (++i == 2) {
           done();
         }
       });
-      this.watcher.on('ready', function() {
+      this.watcher.on('ready', () => {
         fs.writeFileSync(jo(testdir, 'file_1'), 'wow');
         fs.writeFileSync(jo(testdir, '.file_9'), 'wow');
         fs.writeFileSync(jo(testdir, '.file_3'), 'wow');
@@ -445,20 +430,20 @@ function harness(mode) {
     });
 
     it('should ignore dot dirs', function(done) {
-      this.watcher.on('change', function(filepath, dir) {
+      this.watcher.on('change', (filepath, dir) => {
         assert.ok(filepath.match(/file_1/), 'only file_1 got : ' + filepath);
         assert.equal(dir, testdir);
         done();
       });
 
-      this.watcher.on('add', function(filepath) {
+      this.watcher.on('add', filepath => {
         if (filepath.match(/^\.lol/)) {
           done(new Error('Should not emit add events for ignored dirs'));
         }
       });
 
-      this.watcher.on('ready', function() {
-        var subdir = jo(testdir, '.lol' + Math.floor(Math.random() * 10000));
+      this.watcher.on('ready', () => {
+        let subdir = jo(testdir, '.lol' + Math.floor(Math.random() * 10000));
         fs.mkdirSync(subdir);
         fs.writeFileSync(jo(subdir, 'file'), 'wow');
         fs.writeFileSync(jo(subdir, '.file_3'), 'wow');
@@ -469,15 +454,9 @@ function harness(mode) {
 
   describe('sane(dir, ignored)', function() {
     beforeEach(function() {
-      var Watcher = getWatcherClass(mode);
+      let Watcher = getWatcherClass(mode);
       this.watcher = new Watcher(testdir, {
-        ignored: [
-          '**/file_3',
-          /file_4/,
-          function(file) {
-            return file.indexOf('file_5') !== -1;
-          },
-        ],
+        ignored: ['**/file_3', /file_4/, file => file.indexOf('file_5') !== -1],
       });
     });
 
@@ -486,15 +465,15 @@ function harness(mode) {
     });
 
     it('ignores files', function(done) {
-      var i = 0;
-      this.watcher.on('change', function(filepath, dir) {
+      let i = 0;
+      this.watcher.on('change', (filepath, dir) => {
         assert.ok(filepath.match(/file_(1|2)/), 'only file_1 and file_2');
         assert.equal(dir, testdir);
         if (++i === 2) {
           done();
         }
       });
-      this.watcher.on('ready', function() {
+      this.watcher.on('ready', () => {
         fs.writeFileSync(jo(testdir, 'file_1'), 'wow');
         fs.writeFileSync(jo(testdir, 'file_4'), 'wow');
         fs.writeFileSync(jo(testdir, 'file_3'), 'wow');
@@ -506,19 +485,12 @@ function harness(mode) {
 
   describe('sane(dir, ignored) - node_watcher directory ignore', function() {
     beforeEach(function() {
-      var Watcher = getWatcherClass({}); // node_watcher only
+      let Watcher = getWatcherClass({}); // node_watcher only
       this.watcher = new Watcher(testdir, {
-        ignored: [
-          /sub_0/,
-          function(file) {
-            return file.indexOf('sub_1') !== -1;
-          },
-        ],
+        ignored: [/sub_0/, file => file.indexOf('sub_1') !== -1],
       });
-      this.watcher.doIgnore = function() {
-        //overwrite standard ignore for test
-        return false;
-      };
+      //overwrite standard ignore for test
+      this.watcher.doIgnore = () => false;
     });
 
     afterEach(function(done) {
@@ -526,8 +498,8 @@ function harness(mode) {
     });
 
     it('ignores folders', function(done) {
-      var i = 0;
-      this.watcher.on('change', function(filepath, dir) {
+      let i = 0;
+      this.watcher.on('change', (filepath, dir) => {
         assert.ok(
           !filepath.match(/sub_(0|1)/),
           'Found changes in ignored subdir sub_0 and/or sub_1'
@@ -537,7 +509,7 @@ function harness(mode) {
           done();
         }
       });
-      this.watcher.on('ready', function() {
+      this.watcher.on('ready', () => {
         fs.writeFileSync(jo(testdir, 'sub_0', 'file_1'), 'wow');
         fs.writeFileSync(jo(testdir, 'sub_1', 'file_1'), 'wow');
         fs.writeFileSync(jo(testdir, 'sub_2', 'file_1'), 'wow');
@@ -561,18 +533,14 @@ function harness(mode) {
     });
 
     it('allows for shortcut mode using just a string as glob', function(done) {
-      this.watcher.on('change', function(filepath, dir) {
+      this.watcher.on('change', (filepath, dir) => {
         assert.ok(filepath.match(/file_1/));
         assert.equal(dir, testdir);
         done();
       });
-      this.watcher.on('ready', function() {
+      this.watcher.on('ready', () => {
         fs.writeFileSync(jo(testdir, 'file_1'), 'wow');
       });
     });
   });
-
-  function defer(fn) {
-    setTimeout(fn, mode.poll ? 1000 : 300);
-  }
 }

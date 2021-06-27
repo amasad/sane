@@ -18,7 +18,7 @@ function withPrefixes(prefixes) {
   };
 }
 
-let allPrefixes = ['write', 'rename', 'remove', 'create'];
+const allPrefixes = ['write', 'rename', 'remove', 'create'];
 
 function extractChanges(context) {
   const {
