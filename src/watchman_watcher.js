@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const micromatch = require('micromatch');
 const common = require('./common');
 const watchmanClient = require('./watchman_client');
 const EventEmitter = require('events').EventEmitter;
@@ -15,6 +16,9 @@ const CHANGE_EVENT = common.CHANGE_EVENT;
 const DELETE_EVENT = common.DELETE_EVENT;
 const ADD_EVENT = common.ADD_EVENT;
 const ALL_EVENT = common.ALL_EVENT;
+
+// These are the types associated with extglobs
+const UNSUPPORTED_TOKEN_TYPES = ['qmark', 'negate', 'star', 'plus', 'at'];
 
 /**
  * Export `WatchmanWatcher` class.
@@ -33,6 +37,24 @@ module.exports = WatchmanWatcher;
 
 function WatchmanWatcher(dir, opts) {
   common.assignOptions(this, opts);
+
+  this.globsSupported = true;
+
+  let expandedGlobs = [];
+  for (let i in this.globs) {
+    const globs = micromatch.parse(this.globs[i], { expand: true });
+    for (let glob in globs) {
+      expandedGlobs.push(glob.consumed);
+      this.globsSupported =
+        this.globsSupported &&
+        !glob.negated &&
+        !glob.tokens.find(function(token) {
+          return UNSUPPORTED_TOKEN_TYPES.includes(token.type);
+        });
+    }
+  };
+  this.globs = expandedGlobs;
+
   this.root = path.resolve(dir);
   this._init();
 }
@@ -81,7 +103,7 @@ WatchmanWatcher.prototype.createOptions = function() {
   // to the watchman server.  This saves both on data size to be
   // communicated back to us and compute for evaluating the globs
   // in our node process.
-  if (this._client.wildmatch) {
+  if (this.globsSupported && this._client.wildmatch) {
     if (this.globs.length === 0) {
       if (!this.dot) {
         // Make sure we honor the dot option if even we're not using globs.
@@ -150,7 +172,7 @@ WatchmanWatcher.prototype.handleFileChange = function(changeDescriptor) {
   absPath = path.join(this.root, relativePath);
 
   if (
-    !(this._client.wildmatch && !this.hasIgnore) &&
+    (!this._client.wildmatch || !this.globsSupported || this.hasIgnore) &&
     !common.isFileIncluded(this.globs, this.dot, this.doIgnore, relativePath)
   ) {
     return;
